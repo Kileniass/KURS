@@ -2,8 +2,7 @@
 let tg = null;
 
 // Базовый путь к API
-const API_BASE_URL = 'https://tg-bd.onrender.com';
-const API_PATH = '/api';
+const API_BASE_URL = 'https://tg-bd.onrender.com/api';
 const STATIC_BASE_URL = 'https://tg-bd.onrender.com';
 
 // Очередь уведомлений
@@ -131,15 +130,20 @@ const api = {
         return tg.initDataUnsafe.user.id;
     },
 
+    // Инициализация пользователя
+    async initUser(telegramId) {
+        return request(`${API_BASE_URL}/init/${telegramId}`);
+    },
+
     // Методы для работы с профилем
     async getProfile(telegramId) {
         return request(`${API_BASE_URL}/users/${telegramId}`);
     },
 
-    async createProfile(profileData) {
-        return request(`${API_BASE_URL}/users/${profileData.telegram_id}`, {
+    async createProfile(telegramId, profileData) {
+        return request(`${API_BASE_URL}/users/${telegramId}`, {
             method: 'PUT',
-            body: JSON.stringify(profileData)
+            body: JSON.stringify({ ...profileData, telegram_id: telegramId })
         });
     },
 

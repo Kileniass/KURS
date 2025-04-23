@@ -27,6 +27,8 @@ function setImageWithFallback(imgElement, photoUrl) {
 // Функция инициализации пользователя
 async function initializeUser() {
     let tgApp = null;
+    let currentUserId = null;
+    let currentProfile = null;
 
     // Функция ожидания инициализации tgApp
     async function waitForTgApp(timeout = 5000) {
@@ -46,57 +48,132 @@ async function initializeUser() {
         });
     }
 
-    // Инициализация пользователя
-    async function initUser() {
-        try {
-            // Ждем инициализации tgApp
-            tgApp = await waitForTgApp();
-            console.log('tgApp инициализирован');
+    try {
+        // Ждем инициализации tgApp
+        tgApp = await waitForTgApp();
+        console.log('tgApp инициализирован');
 
-            if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
-                throw new Error('Telegram WebApp не инициализирован корректно');
-            }
+        if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
+            throw new Error('Telegram WebApp не инициализирован корректно');
+        }
 
-            const telegramId = tgApp.tg.initDataUnsafe.user.id;
-            console.log('Получен telegram_id:', telegramId);
-            
-            // Инициализируем пользователя на сервере
-            const user = await tgApp.api.initUser(telegramId);
-            console.log('User initialized:', user);
-            
-            if (!user || !user.user_id) {
-                throw new Error('Не удалось получить данные пользователя');
-            }
+        // Получаем telegram_id
+        const telegramId = tgApp.api.getTelegramId();
+        console.log('Получен telegram_id:', telegramId);
 
-            // Проверяем, является ли пользователь новым
-            if (user.is_new) {
-                // Если пользователь новый, перенаправляем на страницу создания профиля
-                window.location.href = 'profile-change.html';
-                return;
-            }
+        // Инициализируем пользователя
+        const user = await tgApp.api.initUser(telegramId);
+        console.log('Пользователь инициализирован:', user);
 
-            // Если пользователь существует, проверяем наличие профиля
-            if (!user.name || !user.age || !user.car || !user.region) {
-                // Если профиль не заполнен, перенаправляем на страницу создания профиля
-                window.location.href = 'profile-change.html';
-                return;
-            }
+        if (!user) {
+            throw new Error('Не удалось инициализировать пользователя');
+        }
 
-            // Если профиль заполнен, перенаправляем на главную страницу
-            window.location.href = 'index.html';
+        currentUserId = user.id;
+        console.log('Текущий ID пользователя:', currentUserId);
 
-        } catch (error) {
-            console.error('Error initializing user:', error);
-            if (tgApp && tgApp.api) {
-                tgApp.api.showNotification('Ошибка при инициализации пользователя: ' + error.message, true);
-            } else {
-                alert('Ошибка при инициализации пользователя: ' + error.message);
-            }
+        // Загружаем следующий профиль
+        currentProfile = await tgApp.api.getNextProfile(telegramId);
+        console.log('Следующий профиль загружен:', currentProfile);
+
+        if (!currentProfile) {
+            throw new Error('Нет доступных профилей');
+        }
+
+        // Обновляем UI
+        const profileName = document.getElementById('profileName');
+        const profileAge = document.getElementById('profileAge');
+        const profileCar = document.getElementById('profileCar');
+        const profileRegion = document.getElementById('profileRegion');
+        const profileAbout = document.getElementById('profileAbout');
+        const profilePhoto = document.getElementById('profilePhoto');
+
+        if (profileName) profileName.textContent = currentProfile.name;
+        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
+        if (profileCar) profileCar.textContent = currentProfile.car;
+        if (profileRegion) profileRegion.textContent = currentProfile.region;
+        if (profileAbout) profileAbout.textContent = currentProfile.about;
+        
+        if (profilePhoto) {
+            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+        }
+
+        // Обработчики кнопок
+        const likeButton = document.getElementById('likeButton');
+        const dislikeButton = document.getElementById('dislikeButton');
+
+        if (likeButton) {
+            likeButton.addEventListener('click', async () => {
+                try {
+                    if (!currentProfile || !telegramId) {
+                        throw new Error('Нет активного профиля или telegram_id');
+                    }
+
+                    await tgApp.api.likeProfile(currentProfile.id, telegramId);
+                    tgApp.api.showNotification('Лайк отправлен!');
+                    
+                    // Загружаем следующий профиль
+                    currentProfile = await tgApp.api.getNextProfile(telegramId);
+                    if (currentProfile) {
+                        // Обновляем UI
+                        if (profileName) profileName.textContent = currentProfile.name;
+                        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
+                        if (profileCar) profileCar.textContent = currentProfile.car;
+                        if (profileRegion) profileRegion.textContent = currentProfile.region;
+                        if (profileAbout) profileAbout.textContent = currentProfile.about;
+                        if (profilePhoto) {
+                            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+                        }
+                    } else {
+                        tgApp.api.showNotification('Больше нет доступных профилей');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при отправке лайка:', error);
+                    tgApp.api.showNotification(error.message, true);
+                }
+            });
+        }
+
+        if (dislikeButton) {
+            dislikeButton.addEventListener('click', async () => {
+                try {
+                    if (!currentProfile || !telegramId) {
+                        throw new Error('Нет активного профиля или telegram_id');
+                    }
+
+                    await tgApp.api.dislikeProfile(currentProfile.id, telegramId);
+                    tgApp.api.showNotification('Дизлайк отправлен');
+                    
+                    // Загружаем следующий профиль
+                    currentProfile = await tgApp.api.getNextProfile(telegramId);
+                    if (currentProfile) {
+                        // Обновляем UI
+                        if (profileName) profileName.textContent = currentProfile.name;
+                        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
+                        if (profileCar) profileCar.textContent = currentProfile.car;
+                        if (profileRegion) profileRegion.textContent = currentProfile.region;
+                        if (profileAbout) profileAbout.textContent = currentProfile.about;
+                        if (profilePhoto) {
+                            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+                        }
+                    } else {
+                        tgApp.api.showNotification('Больше нет доступных профилей');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при отправке дизлайка:', error);
+                    tgApp.api.showNotification(error.message, true);
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Ошибка при инициализации:', error);
+        if (tgApp && tgApp.api) {
+            tgApp.api.showNotification(error.message, true);
+        } else {
+            alert(error.message);
         }
     }
-
-    // Инициализируем пользователя при загрузке страницы
-    await initUser();
 }
 
 // Запускаем инициализацию при загрузке страницы
