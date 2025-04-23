@@ -5,36 +5,28 @@ import logging
 from typing import Callable
 from pathlib import Path
 from fastapi import FastAPI, Request, Response, HTTPException, Depends, File, UploadFile
-from fastapi.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from app import models, crud, database, utils, schemas
+from app import models, crud, database, utils
 from app.database import SessionLocal, engine
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from app.schemas import AboutUpdate, UserUpdate, UserCreate, User, LikeCreate, MatchRead, PhotoUpload
 import random
 import string
 
-# Configure logging
+# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Создаем директорию для загруженных файлов
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-# Конфигурация CORS
-ALLOWED_ORIGINS = [
-    "https://kileniass.github.io",
-    "http://localhost:3000",  # для локальной разработки
-    "http://localhost:5000"   # для локальной разработки
-]
+# Создание таблиц в базе данных (если их ещё нет)
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Telegram WebApp for Auto Enthusiasts",
@@ -43,71 +35,13 @@ app = FastAPI(
     debug=True
 )
 
-# Middleware для CORS с подробным логированием
-class DetailedCORSMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        origin = request.headers.get('origin')
-        logger.debug(f"Incoming request from origin: {origin}")
-        logger.debug(f"Request method: {request.method}")
-        logger.debug(f"Request path: {request.url.path}")
-        logger.debug(f"Request headers: {dict(request.headers)}")
-
-        # Проверяем origin
-        if origin and origin not in ALLOWED_ORIGINS:
-            logger.warning(f"Blocked request from unauthorized origin: {origin}")
-            return JSONResponse(
-                status_code=403,
-                content={"detail": "Origin not allowed"}
-            )
-
-        # Для preflight OPTIONS запросов
-        if request.method == "OPTIONS":
-            logger.debug("Processing CORS preflight request")
-            return JSONResponse(
-                content={},
-                headers={
-                    "Access-Control-Allow-Origin": origin or ALLOWED_ORIGINS[0],
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-                    "Access-Control-Max-Age": "3600",
-                }
-            )
-
-        # Для всех остальных запросов
-        try:
-            response = await call_next(request)
-            
-            # Добавляем CORS заголовки
-            if origin in ALLOWED_ORIGINS:
-                response.headers["Access-Control-Allow-Origin"] = origin
-                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-                response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
-                
-            logger.debug(f"Response status: {response.status_code}")
-            logger.debug(f"Response headers: {dict(response.headers)}")
-            
-            return response
-            
-        except Exception as e:
-            logger.error(f"Error processing request: {str(e)}")
-            return JSONResponse(
-                status_code=500,
-                content={"detail": "Internal server error"}
-            )
-
-# Монтируем статические файлы
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Добавляем middleware
-app.add_middleware(DetailedCORSMiddleware)
-
-# Стандартный CORS middleware (как запасной вариант)
+# Middleware для CORS - разрешаем запросы с любых доменов
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-    max_age=3600
+    allow_origins=["*"],  # Разрешаем запросы с любых доменов
+    allow_credentials=True,
+    allow_methods=["*"],  # Разрешаем все методы: GET, POST и т.д.
+    allow_headers=["*"],  # Разрешаем все заголовки
 )
 
 # Dependency для получения DB сессии
@@ -131,21 +65,20 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         if request.method in ['POST', 'PUT']:
             try:
                 if not request.headers.get('content-type', '').startswith('multipart/form-data'):
-                    body = await request.json()
-                    logger.debug(f"Request body: {body}")
-            except:
-                pass
-
-        try:
-            response = await call_next(request)
-            process_time = time.time() - start_time
-            logger.info(f"Response status: {response.status_code}, Process time: {process_time:.3f}s")
-            return response
-        except Exception as e:
-            logger.error(f"Request failed: {str(e)}")
-            process_time = time.time() - start_time
-            logger.info(f"Error response, Process time: {process_time:.3f}s")
-            raise
+                    body = await request.body()
+                    if body:
+                        logger.debug(f"Request body: {body.decode()}")
+            except Exception as e:
+                logger.error(f"Error reading request body: {str(e)}")
+        
+        # Process request
+        response = await call_next(request)
+        
+        # Log response details
+        process_time = time.time() - start_time
+        logger.info(f"Response: {response.status_code} (took {process_time:.2f} seconds)")
+        
+        return response
 
 # Добавляем middleware для логирования
 app.add_middleware(RequestLoggingMiddleware)
@@ -226,7 +159,7 @@ async def init_user(telegram_id: int, db: Session = Depends(get_db)):
     summary="Обновление профиля пользователя",
     description="Обновляет данные профиля пользователя",
     response_description="Обновленные данные пользователя")
-def update_user_profile(session_id: str, user_update: schemas.UserUpdate, db: Session = Depends(get_db)):
+def update_user_profile(session_id: str, user_update: UserUpdate, db: Session = Depends(get_db)):
     updated_user = crud.update_user(db, session_id, user_update)
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -239,17 +172,12 @@ def update_user_profile(session_id: str, user_update: schemas.UserUpdate, db: Se
 async def get_profile(session_id: str, db: Session = Depends(get_db)):
     try:
         logger.info(f"Fetching profile for user with session ID: {session_id}")
-        user = db.query(User).filter(User.session_id == session_id).first()
+        user = crud.get_user_by_telegram_id(db, session_id)
         if not user:
             logger.error(f"User not found: {session_id}")
             raise HTTPException(status_code=404, detail="User not found")
         
-        profile = crud.get_profile(db, user.id)
-        if not profile:
-            logger.error(f"Profile not found for user: {session_id}")
-            raise HTTPException(status_code=404, detail="Profile not found")
-            
-        return profile
+        return user
     except Exception as e:
         logger.error(f"Error fetching profile for user {session_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -325,11 +253,10 @@ def generate_password():
     description="Обновляет раздел 'О себе' в профиле",
     response_description="Обновленное описание")
 def update_about(data: AboutUpdate, db: Session = Depends(get_db)):
-    user = crud.update_about(db, user_id=data.user_id, about_text=data.about)
-    if user:
-        return {"message": "About section updated", "about": user.about}
-    else:
-        return {"message": "User not found"}
+    user = crud.update_about(db, data.user_id, data.about)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"]
 
