@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const profile = await tgApp.api.getProfile(telegramId);
             console.log('Profile loaded:', profile);
             
+            if (!profile) {
+                throw new Error('Профиль не найден');
+            }
+            
             // Заполняем данные профиля
             document.getElementById('profilePhoto').src = profile.photo_url || 'image/placeholder_image.jpg';
             document.getElementById('profileName').textContent = `${profile.name}, ${profile.age}`;
@@ -25,6 +29,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('profileName').textContent = 'Ошибка загрузки';
             document.getElementById('profileAbout').textContent = 'Не удалось загрузить данные профиля';
             document.getElementById('profileCar').textContent = 'Ошибка';
+            
+            // Перенаправляем на страницу создания профиля, если профиль не найден
+            if (error.message.includes('404')) {
+                window.location.href = 'profile-change.html';
+            }
         }
     }
     

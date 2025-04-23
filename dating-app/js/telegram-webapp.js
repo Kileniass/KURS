@@ -63,7 +63,7 @@ const api = {
                     url: response.url,
                     errorData
                 });
-                throw new Error(errorData.message || `Ошибка сервера: ${response.status}`);
+                throw new Error(errorData.detail || `Ошибка сервера: ${response.status}`);
             }
             
             const data = await response.json();
@@ -85,33 +85,44 @@ const api = {
 
     // Инициализация пользователя
     async initUser(telegramId) {
-        return this.request(`/api/init/${telegramId}`);
+        try {
+            return await this.request(`/user/${telegramId}`);
+        } catch (error) {
+            if (error.message.includes('404')) {
+                // Если пользователь не найден, создаем нового
+                return await this.request('/user', {
+                    method: 'POST',
+                    body: JSON.stringify({ telegram_id: telegramId })
+                });
+            }
+            throw error;
+        }
     },
 
     // Методы для работы с профилем
     async createProfile(data) {
-        return this.request(`/api/users/${data.telegram_id}`, {
+        return this.request(`/user/${data.telegram_id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
     },
 
     async getProfile(telegramId) {
-        return this.request(`/api/users/${telegramId}`);
+        return this.request(`/user/${telegramId}`);
     },
 
     async getNextProfile(currentUserId) {
-        return this.request(`/profiles/next?current_user_id=${currentUserId}`);
+        return this.request(`/next_profile/${currentUserId}`);
     },
 
     async likeProfile(userId, currentUserId) {
-        return this.request(`/profiles/${userId}/like?current_user_id=${currentUserId}`, {
+        return this.request(`/like/${currentUserId}/${userId}`, {
             method: 'POST'
         });
     },
 
     async dislikeProfile(userId, currentUserId) {
-        return this.request(`/profiles/${userId}/dislike?current_user_id=${currentUserId}`, {
+        return this.request(`/dislike/${currentUserId}/${userId}`, {
             method: 'POST'
         });
     },
@@ -120,13 +131,26 @@ const api = {
         return this.request(`/matches/${userId}`);
     },
 
-    async updateAbout(userId, about) {
-        return this.request('/profiles/about', {
-            method: 'PUT',
-            body: JSON.stringify({
-                user_id: userId,
-                about: about
-            })
+    async getLikes(userId) {
+        return this.request(`/likes/${userId}`);
+    },
+
+    async matchUsers(userId1, userId2) {
+        return this.request(`/match/${userId1}/${userId2}`, {
+            method: 'POST'
+        });
+    },
+
+    async uploadPhoto(file, telegramId) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return this.request(`/upload_photo/${telegramId}`, {
+            method: 'POST',
+            headers: {
+                // Не добавляем Content-Type, он будет установлен автоматически для FormData
+            },
+            body: formData
         });
     }
 };

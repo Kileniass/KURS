@@ -47,7 +47,7 @@ async function loadLikes() {
             const card = document.createElement('div');
             card.className = 'like-card';
             card.innerHTML = `
-                <img src="${user.photo || 'image/placeholder_image.jpg'}" alt="${user.name}" class="like-card__image">
+                <img src="${user.photo_url || 'image/placeholder_image.jpg'}" alt="${user.name}" class="like-card__image">
                 <div class="like-card__content">
                     <h3 class="like-card__name">${user.name}</h3>
                     <p class="like-card__car">${user.car || 'Автомобиль не указан'}</p>
@@ -66,13 +66,7 @@ async function loadLikes() {
                     await tgApp.api.matchUsers(telegramId, userId);
                     
                     // Показываем уведомление об успешном матче
-                    tg.showPopup({
-                        title: 'Поздравляем!',
-                        message: 'У вас взаимная симпатия! Теперь вы можете начать общение.',
-                        buttons: [{
-                            type: 'ok'
-                        }]
-                    });
+                    tg.showAlert('Поздравляем! У вас взаимная симпатия! Теперь вы можете начать общение.');
 
                     // Обновляем список лайков
                     loadLikes();

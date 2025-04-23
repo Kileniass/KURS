@@ -6,9 +6,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     let photoFile = null;
     let currentUser = null;
 
+    // Базовый URL API
+    const API_BASE_URL = 'https://tg-bd.onrender.com';
+
     // Функция для показа уведомлений
     function showNotification(message, isError = false) {
         try {
+            if (!window.Telegram || !window.Telegram.WebApp) {
+                console.error('Telegram WebApp не доступен');
+                alert(message);
+                return;
+            }
+
             if (isError) {
                 console.error(message);
                 window.Telegram.WebApp.showAlert(message);
@@ -18,33 +27,93 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Ошибка при показе уведомления:', error);
+            alert(message);
+        }
+    }
+
+    // Функция для выполнения API запросов
+    async function apiRequest(endpoint, method = 'GET', data = null) {
+        try {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Ошибка при выполнении запроса');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('API request error:', error);
+            throw error;
+        }
+    }
+
+    // Функция для загрузки фото
+    async function uploadPhoto(file, telegramId) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`${API_BASE_URL}/upload_photo/${telegramId}`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Ошибка при загрузке фото');
+            }
+
+            const data = await response.json();
+            return data.photo_url;
+        } catch (error) {
+            console.error('Ошибка при загрузке фото:', error);
+            throw error;
         }
     }
 
     // Инициализация пользователя
     async function initUser() {
         try {
-            // Проверяем инициализацию Telegram WebApp
             if (!window.Telegram || !window.Telegram.WebApp) {
                 throw new Error('Telegram WebApp не инициализирован');
             }
 
             const tg = window.Telegram.WebApp;
             
-            // Проверяем наличие данных пользователя
-            if (!tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
-                throw new Error('Данные пользователя недоступны');
+            const telegramId = tg.initDataUnsafe?.user?.id;
+            if (!telegramId) {
+                throw new Error('Не удалось получить ID пользователя');
             }
             
-            const telegramId = tg.initDataUnsafe.user.id.toString();
-            console.log('Получен telegram_id:', telegramId);
+            console.log('Получен telegram_id:', telegramId.toString());
             
-            // Инициализируем пользователя на сервере
-            currentUser = await tgApp.api.initUser(telegramId);
+            // Получаем данные пользователя
+            try {
+                currentUser = await apiRequest(`/user/${telegramId}`);
+            } catch (error) {
+                if (error.message.includes('404')) {
+                    // Если пользователь не найден, создаем нового
+                    currentUser = await apiRequest('/user', 'POST', { telegram_id: telegramId.toString() });
+                } else {
+                    throw error;
+                }
+            }
+
             console.log('Пользователь инициализирован:', currentUser);
             
-            // Если у пользователя уже есть профиль, заполняем форму
-            if (currentUser.name) {
+            // Заполняем форму данными пользователя
+            if (currentUser) {
                 document.getElementById('name').value = currentUser.name || '';
                 document.getElementById('age').value = currentUser.age || '';
                 document.getElementById('bio').value = currentUser.about || '';
@@ -98,8 +167,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             saveButton.disabled = true;
             
-            // Получаем telegram_id из Telegram WebApp
-            const telegramId = tgApp.tg.initDataUnsafe.user.id.toString();
+            const tg = window.Telegram?.WebApp;
+            if (!tg || !tg.initDataUnsafe?.user?.id) {
+                throw new Error('Не удалось получить данные пользователя');
+            }
+            
+            const telegramId = tg.initDataUnsafe.user.id.toString();
             
             // Проверяем обязательные поля
             const name = document.getElementById('name').value.trim();
@@ -126,25 +199,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 about
             };
             
-            // Если есть новое фото, добавляем его в данные
+            // Если есть новое фото, загружаем его
             if (photoFile) {
-                const formData = new FormData();
-                formData.append('photo', photoFile);
-                
-                // Здесь должна быть загрузка фото на сервер
-                // После успешной загрузки получаем URL и добавляем его в profileData
-                // profileData.photo_url = полученный_url;
+                try {
+                    const photoUrl = await uploadPhoto(photoFile, telegramId);
+                    profileData.photo_url = photoUrl;
+                } catch (error) {
+                    console.error('Ошибка при загрузке фото:', error);
+                    showNotification('Ошибка при загрузке фото. Профиль будет сохранен без фото.', true);
+                }
             }
             
-            // Отправляем данные на сервер
-            const updatedUser = await tgApp.api.createProfile(profileData);
+            // Обновляем профиль пользователя
+            const updatedUser = await apiRequest(`/user/${telegramId}`, 'PUT', profileData);
             console.log('Профиль обновлен:', updatedUser);
             
-            // Показываем уведомление об успехе и перенаправляем
             showNotification('Профиль успешно сохранен');
+            
             setTimeout(() => {
                 window.location.href = 'profile.html';
-            }, 1000);
+            }, 1500);
             
         } catch (error) {
             console.error('Ошибка при сохранении профиля:', error);

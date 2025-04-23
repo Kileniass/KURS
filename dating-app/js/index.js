@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Инициализируем пользователя на сервере
             const user = await tgApp.api.initUser(telegramId);
-            currentUserId = user.id;
+            currentUserId = telegramId;
             console.log('User initialized:', user);
             
             // Загружаем первый профиль
@@ -26,9 +26,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Загрузка следующего профиля
     async function loadNextProfile() {
         try {
-            const response = await tgApp.api.getNextProfile(currentUserId);
+            const profile = await tgApp.api.getNextProfile(currentUserId);
             
-            if (!response.profile) {
+            if (!profile) {
                 document.getElementById('profilePhoto').src = 'image/placeholder_image.jpg';
                 document.getElementById('profileName').textContent = 'Нет доступных профилей';
                 document.getElementById('profileAbout').textContent = 'Попробуйте позже';
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             
-            currentProfile = response.profile;
+            currentProfile = profile;
             
             // Заполняем данные профиля
             document.getElementById('profilePhoto').src = currentProfile.photo_url || 'image/placeholder_image.jpg';
@@ -55,9 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentProfile) return;
         
         try {
-            const result = await tgApp.api.likeProfile(currentProfile.id, currentUserId);
+            const result = await tgApp.api.likeProfile(currentProfile.telegram_id, currentUserId);
             
-            if (result.match) {
+            if (result.is_match) {
                 tgApp.tg.showAlert('У вас новое совпадение!');
             } else {
                 tgApp.tg.showAlert('Профиль понравился!');
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentProfile) return;
         
         try {
-            await tgApp.api.dislikeProfile(currentProfile.id, currentUserId);
+            await tgApp.api.dislikeProfile(currentProfile.telegram_id, currentUserId);
             await loadNextProfile();
         } catch (error) {
             console.error('Error disliking profile:', error);
