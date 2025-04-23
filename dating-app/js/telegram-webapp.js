@@ -67,114 +67,74 @@ function addNotification(message, isError = false) {
     }
 }
 
+// Функция для отправки запросов к API
+async function request(url, options = {}) {
+    try {
+        console.log('Отправка запроса к API:', { url, ...options });
+        
+        const defaultOptions = {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Origin': 'https://kileniass.github.io'
+            }
+        };
+
+        const response = await fetch(url, { ...defaultOptions, ...options });
+        console.log('Получен ответ:', response);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('Получены данные:', data);
+        return data;
+    } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+    }
+}
+
+// Функция для установки изображения с запасным вариантом
+function setImageWithFallback(imgElement, photoUrl) {
+    if (!imgElement) {
+        console.error('Элемент изображения не найден');
+        return;
+    }
+
+    if (!photoUrl) {
+        console.log('URL фото не указан, используем изображение по умолчанию');
+        imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
+        return;
+    }
+
+    // Проверяем, является ли URL абсолютным
+    const fullUrl = photoUrl.startsWith('http') ? photoUrl : `${API_BASE_URL}${photoUrl}`;
+    console.log('Устанавливаем изображение:', fullUrl);
+
+    imgElement.src = fullUrl;
+    imgElement.onerror = () => {
+        console.error('Ошибка загрузки изображения:', fullUrl);
+        imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
+    };
+}
+
 // Утилиты для работы с API
 const api = {
-    // Функция для установки изображения с запасным вариантом
-    setImageWithFallback(imgElement, photoUrl) {
-        if (!imgElement) {
-            console.error('Image element is null');
-            return;
-        }
-
-        if (!photoUrl) {
-            imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
-            return;
-        }
-
-        // Проверяем, является ли URL абсолютным
-        if (photoUrl.startsWith('http')) {
-            imgElement.src = photoUrl;
-        } else {
-            // Если URL относительный, добавляем базовый путь
-            // Проверяем, начинается ли путь с /uploads
-            if (photoUrl.startsWith('/uploads')) {
-                imgElement.src = `${STATIC_BASE_URL}${photoUrl}`;
-            } else {
-                imgElement.src = `${STATIC_BASE_URL}/uploads/${photoUrl}`;
-            }
-        }
-
-        // Обработка ошибок загрузки изображения
-        imgElement.onerror = () => {
-            console.warn('Ошибка загрузки изображения:', imgElement.src);
-            imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
-        };
-    },
-
-    async request(endpoint, options = {}) {
+    // Метод для создания/обновления профиля
+    async createProfile(profileData) {
         try {
-            const defaultHeaders = {
-                'Accept': 'application/json',
-                'X-Client-Version': '1.0.0',
-                'X-Request-ID': Math.random().toString(36).substring(7)
-            };
-
-            if (options.body && !(options.body instanceof FormData)) {
-                defaultHeaders['Content-Type'] = 'application/json';
-            }
-
-            const requestOptions = {
-                ...options,
-                mode: 'cors',
-                headers: {
-                    ...defaultHeaders,
-                    ...options.headers
-                }
-            };
-
-            // Формируем полный URL
-            const url = `${API_BASE_URL}${API_PATH}${endpoint}`;
-            console.log('Отправка запроса к API:', {
-                url,
-                method: options.method || 'GET',
-                headers: requestOptions.headers
+            const response = await request(`${API_BASE_URL}/profiles`, {
+                method: 'POST',
+                body: JSON.stringify(profileData)
             });
-
-            const response = await fetch(url, requestOptions);
-            console.log('Получен ответ:', {
-                status: response.status,
-                statusText: response.statusText,
-                headers: Object.fromEntries(response.headers.entries())
-            });
-
-            if (!response.ok) {
-                let errorMessage;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.detail || errorData.message || `Ошибка сервера: ${response.status}`;
-                } catch {
-                    errorMessage = `Ошибка сервера: ${response.status} ${response.statusText}`;
-                }
-                throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
-            console.log('Получены данные:', data);
-            return data;
+            return response;
         } catch (error) {
-            console.error('API Error:', error);
-            addNotification(error.message, true);
-            throw error;
+            console.error('Ошибка при создании профиля:', error);
+            throw new Error('Не удалось сохранить профиль: ' + error.message);
         }
-    },
-
-    // Получение session_id из WebApp
-    async getSessionId() {
-        if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
-            throw new Error('Данные пользователя недоступны');
-        }
-        
-        const telegramId = tg.initDataUnsafe.user.id;
-        const response = await this.request(`/init/${telegramId}`);
-        return response.session_id;
-    },
-
-    // Методы для работы с профилем
-    async createProfile(data) {
-        return this.request(`/users/${data.session_id}`, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
     },
 
     async getProfile(sessionId) {

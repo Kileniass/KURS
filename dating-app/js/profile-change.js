@@ -149,7 +149,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             let photoUrl = currentUser?.photo_url;
             if (photoFile) {
                 try {
-                    photoUrl = await tgApp.api.uploadPhoto(sessionId, photoFile);
+                    const formData = new FormData();
+                    formData.append('photo', photoFile);
+                    
+                    const uploadResponse = await fetch(`${API_BASE_URL}/photos/upload/${sessionId}`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'Origin': 'https://kileniass.github.io'
+                        }
+                    });
+
+                    if (!uploadResponse.ok) {
+                        throw new Error(`Ошибка загрузки фото: ${uploadResponse.status}`);
+                    }
+
+                    const uploadData = await uploadResponse.json();
+                    photoUrl = uploadData.photo_url;
                     console.log('Фото успешно загружено:', photoUrl);
                 } catch (error) {
                     console.error('Ошибка при загрузке фото:', error);
