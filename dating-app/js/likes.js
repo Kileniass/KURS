@@ -27,7 +27,6 @@ function setImageWithFallback(imgElement, photoUrl) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     let tgApp = null;
-    let sessionId = null;
 
     // Функция ожидания инициализации tgApp
     async function waitForTgApp(timeout = 5000) {
@@ -56,12 +55,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('Telegram WebApp не инициализирован корректно');
         }
 
-        // Получаем session_id
-        sessionId = await tgApp.api.getSessionId();
-        console.log('Получен session_id:', sessionId);
+        // Получаем telegram_id
+        const telegramId = tgApp.api.getTelegramId();
+        console.log('Получен telegram_id:', telegramId);
 
-        // Загружаем лайки
-        const likes = await tgApp.api.getLikes(sessionId);
+        // Получаем лайки
+        const likes = await tgApp.api.getLikes(telegramId);
         console.log('Лайки получены:', likes);
 
         const likesContainer = document.getElementById('likesContainer');
@@ -75,21 +74,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Создаем карточки для каждого лайка
-        likesContainer.innerHTML = '';
         likes.forEach(like => {
             const card = document.createElement('div');
             card.className = 'like-card';
             
             card.innerHTML = `
                 <div class="like-photo">
-                    <img src="${like.photo_url || `${tgApp.STATIC_BASE_URL}/photos/hero-image.jpg`}" alt="${like.name}">
+                    <img src="${like.photo_url || 'default-avatar.png'}" alt="Фото пользователя">
                 </div>
                 <div class="like-info">
-                    <h3>${like.name}, ${like.age}</h3>
-                    <p class="car-info">${like.car}</p>
-                    <p class="region">${like.region}</p>
-                    <p class="about">${like.about || 'Нет описания'}</p>
-                    <button class="like-button" data-user-id="${like.id}">Ответить лайком</button>
+                    <h3>${like.name}</h3>
+                    <p>${like.age} лет</p>
+                    <p>${like.car}</p>
+                    <p>${like.region}</p>
+                    <button class="like-back" data-user-id="${like.id}">Лайкнуть в ответ</button>
                 </div>
             `;
 
@@ -97,21 +95,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // Добавляем обработчики для кнопок лайка
-        document.querySelectorAll('.like-button').forEach(button => {
-            button.addEventListener('click', async () => {
+        document.querySelectorAll('.like-back').forEach(button => {
+            button.addEventListener('click', async (e) => {
                 try {
-                    const userId = button.dataset.userId;
-                    if (!userId || !sessionId) {
-                        throw new Error('Не удалось получить ID пользователя или session_id');
+                    const userId = e.target.dataset.userId;
+                    if (!userId || !telegramId) {
+                        throw new Error('Не удалось получить ID пользователя или telegram_id');
                     }
 
-                    await tgApp.api.likeProfile(userId, sessionId);
+                    await tgApp.api.likeProfile(userId, telegramId);
                     tgApp.api.showNotification('Лайк отправлен!');
                     
-                    // Удаляем карточку после успешного лайка
-                    button.closest('.like-card').remove();
+                    // Удаляем карточку после отправки лайка
+                    e.target.closest('.like-card').remove();
                     
-                    // Проверяем, остались ли еще лайки
+                    // Если больше нет лайков, показываем сообщение
                     if (document.querySelectorAll('.like-card').length === 0) {
                         likesContainer.innerHTML = '<p class="no-likes">У вас пока нет лайков</p>';
                     }
@@ -123,7 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
     } catch (error) {
-        console.error('Ошибка при загрузке лайков:', error);
+        console.error('Ошибка при инициализации:', error);
         if (tgApp && tgApp.api) {
             tgApp.api.showNotification(error.message, true);
         } else {

@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let tgApp = null;
     let currentUserId = null;
     let currentProfile = null;
-    let sessionId = null;
 
     // Функция ожидания инициализации tgApp
     async function waitForTgApp(timeout = 5000) {
@@ -31,12 +30,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('Telegram WebApp не инициализирован корректно');
         }
 
-        // Получаем session_id
-        sessionId = await tgApp.api.getSessionId();
-        console.log('Получен session_id:', sessionId);
+        // Получаем telegram_id
+        const telegramId = tgApp.api.getTelegramId();
+        console.log('Получен telegram_id:', telegramId);
 
         // Получаем профиль пользователя
-        const user = await tgApp.api.getProfile(sessionId);
+        const user = await tgApp.api.getProfile(telegramId);
         console.log('Профиль пользователя получен:', user);
 
         if (!user) {
@@ -47,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Текущий ID пользователя:', currentUserId);
 
         // Загружаем следующий профиль
-        currentProfile = await tgApp.api.getNextProfile(sessionId);
+        currentProfile = await tgApp.api.getNextProfile(telegramId);
         console.log('Следующий профиль загружен:', currentProfile);
 
         if (!currentProfile) {
@@ -79,15 +78,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (likeButton) {
             likeButton.addEventListener('click', async () => {
                 try {
-                    if (!currentProfile || !sessionId) {
-                        throw new Error('Нет активного профиля или session_id');
+                    if (!currentProfile || !telegramId) {
+                        throw new Error('Нет активного профиля или telegram_id');
                     }
 
-                    await tgApp.api.likeProfile(currentProfile.id, sessionId);
+                    await tgApp.api.likeProfile(currentProfile.id, telegramId);
                     tgApp.api.showNotification('Лайк отправлен!');
                     
                     // Загружаем следующий профиль
-                    currentProfile = await tgApp.api.getNextProfile(sessionId);
+                    currentProfile = await tgApp.api.getNextProfile(telegramId);
                     if (currentProfile) {
                         // Обновляем UI
                         if (profileName) profileName.textContent = currentProfile.name;
@@ -111,15 +110,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dislikeButton) {
             dislikeButton.addEventListener('click', async () => {
                 try {
-                    if (!currentProfile || !sessionId) {
-                        throw new Error('Нет активного профиля или session_id');
+                    if (!currentProfile || !telegramId) {
+                        throw new Error('Нет активного профиля или telegram_id');
                     }
 
-                    await tgApp.api.dislikeProfile(currentProfile.id, sessionId);
+                    await tgApp.api.dislikeProfile(currentProfile.id, telegramId);
                     tgApp.api.showNotification('Дизлайк отправлен');
                     
                     // Загружаем следующий профиль
-                    currentProfile = await tgApp.api.getNextProfile(sessionId);
+                    currentProfile = await tgApp.api.getNextProfile(telegramId);
                     if (currentProfile) {
                         // Обновляем UI
                         if (profileName) profileName.textContent = currentProfile.name;

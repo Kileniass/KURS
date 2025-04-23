@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
     let tgApp = null;
-    let sessionId = null;
 
     // Функция ожидания инициализации tgApp
     async function waitForTgApp(timeout = 5000) {
@@ -29,40 +28,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('Telegram WebApp не инициализирован корректно');
         }
 
-        // Получаем session_id
-        sessionId = await tgApp.api.getSessionId();
-        console.log('Получен session_id:', sessionId);
+        // Получаем telegram_id
+        const telegramId = tgApp.api.getTelegramId();
+        console.log('Получен telegram_id:', telegramId);
 
-        // Загружаем матчи
-        const matches = await tgApp.api.getMatches(sessionId);
-        console.log('Матчи получены:', matches);
+        // Получаем мэтчи
+        const matches = await tgApp.api.getMatches(telegramId);
+        console.log('Мэтчи получены:', matches);
 
         const matchesContainer = document.getElementById('matchesContainer');
         if (!matchesContainer) {
-            throw new Error('Контейнер для матчей не найден');
+            throw new Error('Контейнер для мэтчей не найден');
         }
 
         if (!matches || matches.length === 0) {
-            matchesContainer.innerHTML = '<p class="no-matches">У вас пока нет совпадений</p>';
+            matchesContainer.innerHTML = '<p class="no-matches">У вас пока нет мэтчей</p>';
             return;
         }
 
-        // Создаем карточки для каждого матча
-        matchesContainer.innerHTML = '';
+        // Создаем карточки для каждого мэтча
         matches.forEach(match => {
             const card = document.createElement('div');
             card.className = 'match-card';
             
             card.innerHTML = `
                 <div class="match-photo">
-                    <img src="${match.photo_url || `${tgApp.STATIC_BASE_URL}/photos/hero-image.jpg`}" alt="${match.name}">
+                    <img src="${match.photo_url || 'default-avatar.png'}" alt="Фото пользователя">
                 </div>
                 <div class="match-info">
-                    <h3>${match.name}, ${match.age}</h3>
-                    <p class="car-info">${match.car}</p>
-                    <p class="region">${match.region}</p>
+                    <h3>${match.name}</h3>
+                    <p>${match.age} лет</p>
+                    <p>${match.car}</p>
+                    <p>${match.region}</p>
                     <p class="about">${match.about || 'Нет описания'}</p>
-                    <a href="https://t.me/${match.username}" target="_blank" class="match-button">Написать в Telegram</a>
                 </div>
             `;
 
@@ -70,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
     } catch (error) {
-        console.error('Ошибка при загрузке матчей:', error);
+        console.error('Ошибка при инициализации:', error);
         if (tgApp && tgApp.api) {
             tgApp.api.showNotification(error.message, true);
         } else {

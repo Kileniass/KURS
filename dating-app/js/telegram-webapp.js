@@ -123,63 +123,57 @@ function setImageWithFallback(imgElement, photoUrl) {
 
 // Утилиты для работы с API
 const api = {
-    // Получение session_id из WebApp
-    async getSessionId() {
+    // Получение telegram_id из WebApp
+    getTelegramId() {
         if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
             throw new Error('Данные пользователя недоступны');
         }
-        
-        const telegramId = tg.initDataUnsafe.user.id;
-        const response = await request(`${API_BASE_URL}/init/${telegramId}`);
-        if (!response || !response.session_id) {
-            throw new Error('Не удалось получить session_id');
-        }
-        return response.session_id;
+        return tg.initDataUnsafe.user.id;
     },
 
     // Методы для работы с профилем
-    async getProfile(sessionId) {
-        return request(`${API_BASE_URL}/users/${sessionId}`);
+    async getProfile(telegramId) {
+        return request(`${API_BASE_URL}/users/${telegramId}`);
     },
 
     async createProfile(profileData) {
-        return request(`${API_BASE_URL}/users/${profileData.session_id}`, {
+        return request(`${API_BASE_URL}/users/${profileData.telegram_id}`, {
             method: 'PUT',
             body: JSON.stringify(profileData)
         });
     },
 
-    async getNextProfile(sessionId) {
-        return request(`${API_BASE_URL}/profiles/next?session_id=${sessionId}`);
+    async getNextProfile(telegramId) {
+        return request(`${API_BASE_URL}/profiles/next?telegram_id=${telegramId}`);
     },
 
-    async likeProfile(userId, sessionId) {
+    async likeProfile(userId, telegramId) {
         return request(`${API_BASE_URL}/profiles/${userId}/like`, {
             method: 'POST',
-            body: JSON.stringify({ session_id: sessionId })
+            body: JSON.stringify({ telegram_id: telegramId })
         });
     },
 
-    async dislikeProfile(userId, sessionId) {
+    async dislikeProfile(userId, telegramId) {
         return request(`${API_BASE_URL}/profiles/${userId}/dislike`, {
             method: 'POST',
-            body: JSON.stringify({ session_id: sessionId })
+            body: JSON.stringify({ telegram_id: telegramId })
         });
     },
 
-    async getMatches(sessionId) {
-        return request(`${API_BASE_URL}/matches/${sessionId}`);
+    async getMatches(telegramId) {
+        return request(`${API_BASE_URL}/matches/${telegramId}`);
     },
 
-    async getLikes(sessionId) {
-        return request(`${API_BASE_URL}/likes/${sessionId}`);
+    async getLikes(telegramId) {
+        return request(`${API_BASE_URL}/likes/${telegramId}`);
     },
 
-    async uploadPhoto(sessionId, file) {
+    async uploadPhoto(telegramId, file) {
         const formData = new FormData();
         formData.append('photo', file);
         
-        const response = await fetch(`${API_BASE_URL}/photos/upload/${sessionId}`, {
+        const response = await fetch(`${API_BASE_URL}/photos/upload/${telegramId}`, {
             method: 'POST',
             body: formData,
             headers: {
@@ -193,10 +187,6 @@ const api = {
 
         const data = await response.json();
         return data.photo_url;
-    },
-
-    async initUser(telegramId) {
-        return request(`${API_BASE_URL}/init/${telegramId}`);
     },
 
     showNotification(message, isError = false) {
