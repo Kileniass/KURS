@@ -1,9 +1,9 @@
 // Инициализация Telegram WebApp
-let tg = null;
+const tg = window.Telegram.WebApp;
 
-// Базовый путь к API
+// Базовые пути
 const API_BASE_URL = 'https://tg-bd.onrender.com/api';
-const STATIC_BASE_URL = 'https://tg-bd.onrender.com';
+const STATIC_BASE_URL = 'https://tg-bd.onrender.com/static';
 
 // Очередь уведомлений
 let notificationQueue = [];
@@ -96,167 +96,220 @@ async function request(url, options = {}) {
     }
 }
 
-// Функция для установки изображения с запасным вариантом
-function setImageWithFallback(imgElement, photoUrl) {
-    if (!imgElement) {
-        console.error('Элемент изображения не найден');
-        return;
-    }
+// Инициализация приложения
+tg.ready();
+tg.expand();
 
-    if (!photoUrl) {
-        console.log('URL фото не указан, используем изображение по умолчанию');
-        imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
-        return;
-    }
-
-    // Проверяем, является ли URL абсолютным
-    const fullUrl = photoUrl.startsWith('http') ? photoUrl : `${STATIC_BASE_URL}${photoUrl}`;
-    console.log('Устанавливаем изображение:', fullUrl);
-
-    imgElement.src = fullUrl;
-    imgElement.onerror = () => {
-        console.error('Ошибка загрузки изображения:', fullUrl);
-        imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
-    };
-}
-
-// Утилиты для работы с API
+// API методы
 const api = {
-    // Получение telegram_id из WebApp
-    getTelegramId() {
-        if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
-            throw new Error('Данные пользователя недоступны');
+    // Получение telegram_id
+    getTelegramId: () => {
+        if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
+            throw new Error('Telegram WebApp не инициализирован');
         }
         return tg.initDataUnsafe.user.id;
     },
 
     // Инициализация пользователя
-    async initUser(telegramId) {
-        return request(`${API_BASE_URL}/init/${telegramId}`);
-    },
-
-    // Методы для работы с профилем
-    async getProfile(telegramId) {
-        return request(`${API_BASE_URL}/users/${telegramId}`);
-    },
-
-    async createProfile(telegramId, profileData) {
-        return request(`${API_BASE_URL}/users/${telegramId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ ...profileData, telegram_id: telegramId })
-        });
-    },
-
-    async getNextProfile(telegramId) {
-        return request(`${API_BASE_URL}/profiles/next?current_user_id=${telegramId}`);
-    },
-
-    async likeProfile(userId, telegramId) {
-        return request(`${API_BASE_URL}/profiles/${userId}/like`, {
-            method: 'POST',
-            body: JSON.stringify({ current_user_id: telegramId })
-        });
-    },
-
-    async dislikeProfile(userId, telegramId) {
-        return request(`${API_BASE_URL}/profiles/${userId}/dislike`, {
-            method: 'POST',
-            body: JSON.stringify({ current_user_id: telegramId })
-        });
-    },
-
-    async getMatches(telegramId) {
-        return request(`${API_BASE_URL}/matches/${telegramId}`);
-    },
-
-    async getLikes(telegramId) {
-        return request(`${API_BASE_URL}/likes/${telegramId}`);
-    },
-
-    async uploadPhoto(telegramId, file) {
-        const formData = new FormData();
-        formData.append('photo', file);
-        
-        const response = await fetch(`${API_BASE_URL}/photos/upload/${telegramId}`, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Origin': 'https://kileniass.github.io'
+    initUser: async (telegramId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}/init`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка инициализации: ${response.status}`);
             }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Ошибка загрузки фото: ${response.status}`);
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при инициализации пользователя:', error);
+            throw error;
         }
-
-        const data = await response.json();
-        return data.photo_url;
     },
 
-    setImageWithFallback(imgElement, photoUrl) {
-        if (!imgElement) {
-            console.error('Элемент изображения не найден');
-            return;
+    // Получение профиля
+    getProfile: async (telegramId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}`);
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка получения профиля: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при получении профиля:', error);
+            throw error;
         }
+    },
 
+    // Получение следующего профиля
+    getNextProfile: async (telegramId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}/next`);
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка получения следующего профиля: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при получении следующего профиля:', error);
+            throw error;
+        }
+    },
+
+    // Лайк профиля
+    likeProfile: async (targetId, telegramId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}/like/${targetId}`, {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка отправки лайка: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при отправке лайка:', error);
+            throw error;
+        }
+    },
+
+    // Дизлайк профиля
+    dislikeProfile: async (targetId, telegramId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}/dislike/${targetId}`, {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка отправки дизлайка: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при отправке дизлайка:', error);
+            throw error;
+        }
+    },
+
+    // Получение лайков
+    getLikes: async (telegramId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}/likes`);
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка получения лайков: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при получении лайков:', error);
+            throw error;
+        }
+    },
+
+    // Получение мэтчей
+    getMatches: async (telegramId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}/matches`);
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка получения мэтчей: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при получении мэтчей:', error);
+            throw error;
+        }
+    },
+
+    // Обновление профиля
+    updateProfile: async (telegramId, profileData) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(profileData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка обновления профиля: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при обновлении профиля:', error);
+            throw error;
+        }
+    },
+
+    // Загрузка фото
+    uploadPhoto: async (telegramId, file) => {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`${API_BASE_URL}/users/${telegramId}/photo`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Ошибка загрузки фото: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка при загрузке фото:', error);
+            throw error;
+        }
+    },
+
+    // Установка изображения с запасным вариантом
+    setImageWithFallback: (imgElement, photoUrl) => {
         if (!photoUrl) {
-            console.log('URL фото не указан, используем изображение по умолчанию');
             imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
             return;
         }
 
         // Проверяем, является ли URL абсолютным
-        const fullUrl = photoUrl.startsWith('http') ? photoUrl : `${STATIC_BASE_URL}${photoUrl}`;
-        console.log('Устанавливаем изображение:', fullUrl);
+        if (photoUrl.startsWith('http')) {
+            imgElement.src = photoUrl;
+        } else {
+            // Если URL относительный, добавляем базовый путь
+            imgElement.src = `${STATIC_BASE_URL}/${photoUrl}`;
+        }
 
-        imgElement.src = fullUrl;
+        // Обработка ошибок загрузки изображения
         imgElement.onerror = () => {
-            console.error('Ошибка загрузки изображения:', fullUrl);
             imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
         };
     },
 
-    showNotification(message, isError = false) {
-        addNotification(message, isError);
+    // Показать уведомление
+    showNotification: (message, isError = false) => {
+        if (tg && tg.showAlert) {
+            tg.showAlert(message);
+        } else {
+            alert(message);
+        }
     }
 };
 
-function initTelegramWebApp() {
-    try {
-        if (!window.Telegram || !window.Telegram.WebApp) {
-            throw new Error('Telegram WebApp не найден');
-        }
-
-        tg = window.Telegram.WebApp;
-
-        // Проверяем наличие initData
-        if (!tg.initData) {
-            console.warn('initData не найден');
-        }
-
-        // Активируем WebApp
-        tg.ready();
-        tg.expand();
-
-        console.log('Telegram WebApp инициализирован:', {
-            version: tg.version,
-            platform: tg.platform,
-            initDataUnsafe: tg.initDataUnsafe
-        });
-
-        return tg;
-    } catch (error) {
-        console.error('Ошибка при инициализации Telegram WebApp:', error);
-        return null;
-    }
-}
-
-// Инициализируем Telegram WebApp и экспортируем объект для использования в других файлах
-document.addEventListener('DOMContentLoaded', () => {
-    tg = initTelegramWebApp();
-    window.tgApp = {
-        tg,
-        api,
-        STATIC_BASE_URL
-    };
-}); 
+// Экспорт
+window.tgApp = {
+    tg,
+    api,
+    API_BASE_URL,
+    STATIC_BASE_URL
+}; 

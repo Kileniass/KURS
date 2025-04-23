@@ -1,28 +1,3 @@
-// Базовый путь к изображениям
-const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
-const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
-
-// Функция для установки изображения с запасным вариантом
-function setImageWithFallback(imgElement, photoUrl) {
-    if (!photoUrl) {
-        imgElement.src = DEFAULT_PROFILE_IMAGE;
-        return;
-    }
-
-    // Проверяем, является ли URL абсолютным
-    if (photoUrl.startsWith('http')) {
-        imgElement.src = photoUrl;
-    } else {
-        // Если URL относительный, добавляем базовый путь
-        imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
-    }
-
-    // Обработка ошибок загрузки изображения
-    imgElement.onerror = () => {
-        imgElement.src = DEFAULT_PROFILE_IMAGE;
-    };
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
     let tgApp = null;
 
