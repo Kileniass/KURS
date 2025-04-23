@@ -6,58 +6,6 @@ const API_BASE_URL = 'https://tg-bd.onrender.com';
 const API_PATH = '/api';
 const STATIC_BASE_URL = 'https://tg-bd.onrender.com';
 
-// Функция для установки изображения с запасным вариантом
-function setImageWithFallback(imgElement, photoUrl) {
-    if (!photoUrl) {
-        imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
-        return;
-    }
-
-    // Проверяем, является ли URL абсолютным
-    if (photoUrl.startsWith('http')) {
-        imgElement.src = photoUrl;
-    } else {
-        // Если URL относительный, добавляем базовый путь
-        imgElement.src = `${STATIC_BASE_URL}${photoUrl}`;
-    }
-
-    // Обработка ошибок загрузки изображения
-    imgElement.onerror = () => {
-        console.warn('Ошибка загрузки изображения:', photoUrl);
-        imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
-    };
-}
-
-function initTelegramWebApp() {
-    try {
-        if (!window.Telegram || !window.Telegram.WebApp) {
-            throw new Error('Telegram WebApp не найден');
-        }
-
-        tg = window.Telegram.WebApp;
-
-        // Проверяем наличие initData
-        if (!tg.initData) {
-            console.warn('initData не найден');
-        }
-
-        // Активируем WebApp
-        tg.ready();
-        tg.expand();
-
-        console.log('Telegram WebApp инициализирован:', {
-            version: tg.version,
-            platform: tg.platform,
-            initDataUnsafe: tg.initDataUnsafe
-        });
-
-        return tg;
-    } catch (error) {
-        console.error('Ошибка при инициализации Telegram WebApp:', error);
-        return null;
-    }
-}
-
 // Очередь уведомлений
 let notificationQueue = [];
 let isShowingNotification = false;
@@ -121,6 +69,28 @@ function addNotification(message, isError = false) {
 
 // Утилиты для работы с API
 const api = {
+    // Функция для установки изображения с запасным вариантом
+    setImageWithFallback(imgElement, photoUrl) {
+        if (!photoUrl) {
+            imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
+            return;
+        }
+
+        // Проверяем, является ли URL абсолютным
+        if (photoUrl.startsWith('http')) {
+            imgElement.src = photoUrl;
+        } else {
+            // Если URL относительный, добавляем базовый путь
+            imgElement.src = `${STATIC_BASE_URL}${photoUrl}`;
+        }
+
+        // Обработка ошибок загрузки изображения
+        imgElement.onerror = () => {
+            console.warn('Ошибка загрузки изображения:', photoUrl);
+            imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
+        };
+    },
+
     async request(endpoint, options = {}) {
         try {
             const defaultHeaders = {
@@ -285,6 +255,36 @@ const api = {
         }
     }
 };
+
+function initTelegramWebApp() {
+    try {
+        if (!window.Telegram || !window.Telegram.WebApp) {
+            throw new Error('Telegram WebApp не найден');
+        }
+
+        tg = window.Telegram.WebApp;
+
+        // Проверяем наличие initData
+        if (!tg.initData) {
+            console.warn('initData не найден');
+        }
+
+        // Активируем WebApp
+        tg.ready();
+        tg.expand();
+
+        console.log('Telegram WebApp инициализирован:', {
+            version: tg.version,
+            platform: tg.platform,
+            initDataUnsafe: tg.initDataUnsafe
+        });
+
+        return tg;
+    } catch (error) {
+        console.error('Ошибка при инициализации Telegram WebApp:', error);
+        return null;
+    }
+}
 
 // Инициализируем Telegram WebApp и экспортируем объект для использования в других файлах
 document.addEventListener('DOMContentLoaded', () => {
