@@ -165,6 +165,34 @@
   height: 100%; /* Занимает всю высоту родительского контейнера */
 }
 
+.profile__image {
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.profile__edit-wrapper {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+}
+
+.btn__edit {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: white;
+    color: black;
+    border-radius: 20px;
+    font-size: 14px;
+    text-decoration: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.btn__edit:hover {
+    background-color: #f0f0f0;
+}
+
 .profile__image-container {
   width: 290px; /* Ширина контейнера */
   height: 150px; /* Высота контейнера */
@@ -205,22 +233,6 @@
   font-size: 24px;
   font-weight: 600;
   margin: 0;
-}
-
-/* Стили для кнопки "Изменить" */
-.btn__edit {
-  display: inline-block;
-  padding: 8px 16px;
-  background-color: #007bff;
-  color: white;
-  text-decoration: none;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: background-color 0.3s ease;
-}
-
-.btn__edit:hover {
-  background-color: #0056b3;
 }
 
 .profile__quote {
