@@ -6,18 +6,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     let photoFile = null;
     let currentUser = null;
 
-    // Базовые пути для изображений
-    const IMAGES_BASE_PATH = '/image';
+    // Инициализация Telegram WebApp
+    const tg = window.Telegram.WebApp;
+
+    // Базовый путь к изображениям
+    const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
     const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
 
-    // Функция для безопасной загрузки изображений
-    function setImageWithFallback(imgElement, src, fallbackSrc = DEFAULT_PROFILE_IMAGE) {
+    // Функция для установки изображения с запасным вариантом
+    function setImageWithFallback(imgElement, photoUrl) {
+        if (!photoUrl) {
+            imgElement.src = DEFAULT_PROFILE_IMAGE;
+            return;
+        }
+
+        // Проверяем, является ли URL абсолютным
+        if (photoUrl.startsWith('http')) {
+            imgElement.src = photoUrl;
+        } else {
+            // Если URL относительный, добавляем базовый путь
+            imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
+        }
+
+        // Обработка ошибок загрузки изображения
         imgElement.onerror = () => {
-            console.warn(`Ошибка загрузки изображения: ${src}, используем запасное`);
-            imgElement.src = fallbackSrc;
-            imgElement.onerror = null; // Убираем обработчик чтобы избежать рекурсии
+            imgElement.src = DEFAULT_PROFILE_IMAGE;
         };
-        imgElement.src = src;
     }
 
     // Функция для показа уведомлений

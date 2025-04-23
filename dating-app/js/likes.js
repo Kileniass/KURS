@@ -1,6 +1,30 @@
 // Инициализация Telegram WebApp
 const tg = window.Telegram.WebApp;
 
+// Базовый путь к изображениям
+const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
+
+// Функция для установки изображения с запасным вариантом
+function setImageWithFallback(imgElement, photoUrl) {
+    if (!photoUrl) {
+        imgElement.src = `${IMAGES_BASE_PATH}/hero-image.jpg`;
+        return;
+    }
+
+    // Проверяем, является ли URL абсолютным
+    if (photoUrl.startsWith('http')) {
+        imgElement.src = photoUrl;
+    } else {
+        // Если URL относительный, добавляем базовый путь
+        imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
+    }
+
+    // Обработка ошибок загрузки изображения
+    imgElement.onerror = () => {
+        imgElement.src = `${IMAGES_BASE_PATH}/hero-image.jpg`;
+    };
+}
+
 // Функция для загрузки лайков
 async function loadLikes() {
     try {
@@ -47,7 +71,7 @@ async function loadLikes() {
             const card = document.createElement('div');
             card.className = 'like-card';
             card.innerHTML = `
-                <img src="${user.photo_url || 'image/placeholder_image.jpg'}" alt="${user.name}" class="like-card__image">
+                <img src="" alt="${user.name}" class="like-card__image">
                 <div class="like-card__content">
                     <h3 class="like-card__name">${user.name}</h3>
                     <p class="like-card__car">${user.car || 'Автомобиль не указан'}</p>
@@ -55,6 +79,11 @@ async function loadLikes() {
                     <button class="like-card__button" data-user-id="${user.id}">Ответить взаимностью</button>
                 </div>
             `;
+            
+            // Устанавливаем изображение с запасным вариантом
+            const imgElement = card.querySelector('.like-card__image');
+            setImageWithFallback(imgElement, user.photo_url);
+            
             likesList.appendChild(card);
         });
 

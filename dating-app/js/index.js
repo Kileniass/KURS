@@ -8,30 +8,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     likeBtn.innerHTML = 'Лайк';
     dislikeBtn.innerHTML = 'Дизлайк';
 
-    // Базовые пути для изображений
-    const IMAGES_BASE_PATH = '/image';
+    // Инициализация Telegram WebApp
+    const tg = window.Telegram.WebApp;
+
+    // Базовый путь к изображениям
+    const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
     const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
 
-    // Функция для безопасной загрузки изображений
-    function setImageWithFallback(imgElement, src, fallbackSrc = DEFAULT_PROFILE_IMAGE) {
-        if (!imgElement) return;
-        
+    // Функция для установки изображения с запасным вариантом
+    function setImageWithFallback(imgElement, photoUrl) {
+        if (!photoUrl) {
+            imgElement.src = DEFAULT_PROFILE_IMAGE;
+            return;
+        }
+
+        // Проверяем, является ли URL абсолютным
+        if (photoUrl.startsWith('http')) {
+            imgElement.src = photoUrl;
+        } else {
+            // Если URL относительный, добавляем базовый путь
+            imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
+        }
+
+        // Обработка ошибок загрузки изображения
         imgElement.onerror = () => {
-            console.warn(`Ошибка загрузки изображения: ${src}, используем запасное`);
-            imgElement.src = fallbackSrc;
-            imgElement.onerror = null; // Убираем обработчик чтобы избежать рекурсии
+            imgElement.src = DEFAULT_PROFILE_IMAGE;
         };
-        imgElement.src = src || fallbackSrc;
     }
 
     // Инициализация пользователя
     async function initUser() {
         try {
             // Получаем telegram_id из Telegram WebApp
-            const telegramId = tgApp.api.getTelegramId();
+            const telegramId = tg.api.getTelegramId();
             
             // Инициализируем пользователя на сервере
-            const user = await tgApp.api.initUser(telegramId);
+            const user = await tg.api.initUser(telegramId);
             currentUserId = telegramId;
             console.log('User initialized:', user);
             
@@ -39,14 +51,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadNextProfile();
         } catch (error) {
             console.error('Error initializing user:', error);
-            tgApp.api.showNotification('Ошибка при инициализации пользователя');
+            tg.api.showNotification('Ошибка при инициализации пользователя');
         }
     }
 
     // Загрузка следующего профиля
     async function loadNextProfile() {
         try {
-            const profile = await tgApp.api.getNextProfile(currentUserId);
+            const profile = await tg.api.getNextProfile(currentUserId);
             
             if (!profile) {
                 setImageWithFallback(
@@ -76,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
         } catch (error) {
             console.error('Error loading profile:', error);
-            tgApp.api.showNotification('Ошибка при загрузке профиля');
+            tg.api.showNotification('Ошибка при загрузке профиля');
         }
     }
 
@@ -85,18 +97,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentProfile) return;
         
         try {
-            const result = await tgApp.api.likeProfile(currentProfile.telegram_id, currentUserId);
+            const result = await tg.api.likeProfile(currentProfile.telegram_id, currentUserId);
             
             if (result.is_match) {
-                tgApp.api.showNotification('У вас новое совпадение!');
+                tg.api.showNotification('У вас новое совпадение!');
             } else {
-                tgApp.api.showNotification('Профиль понравился!');
+                tg.api.showNotification('Профиль понравился!');
             }
             
             await loadNextProfile();
         } catch (error) {
             console.error('Error liking profile:', error);
-            tgApp.api.showNotification('Ошибка при отправке лайка');
+            tg.api.showNotification('Ошибка при отправке лайка');
         }
     });
 
@@ -105,11 +117,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentProfile) return;
         
         try {
-            await tgApp.api.dislikeProfile(currentProfile.telegram_id, currentUserId);
+            await tg.api.dislikeProfile(currentProfile.telegram_id, currentUserId);
             await loadNextProfile();
         } catch (error) {
             console.error('Error disliking profile:', error);
-            tgApp.api.showNotification('Ошибка при отправке дизлайка');
+            tg.api.showNotification('Ошибка при отправке дизлайка');
         }
     });
 
