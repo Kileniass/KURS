@@ -5,43 +5,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     const photoPreview = document.getElementById('carImagePreview');
     let photoFile = null;
     let currentUser = null;
-
-    // Инициализация Telegram WebApp
-    const tg = window.Telegram.WebApp;
-
-    // Базовый путь к изображениям
-    const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
-    const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
-
-    // Функция для установки изображения с запасным вариантом
-    function setImageWithFallback(imgElement, photoUrl) {
-        if (!photoUrl) {
-            imgElement.src = DEFAULT_PROFILE_IMAGE;
-            return;
-        }
-
-        // Проверяем, является ли URL абсолютным
-        if (photoUrl.startsWith('http')) {
-            imgElement.src = photoUrl;
-        } else {
-            // Если URL относительный, добавляем базовый путь
-            imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
-        }
-
-        // Обработка ошибок загрузки изображения
-        imgElement.onerror = () => {
-            imgElement.src = DEFAULT_PROFILE_IMAGE;
-        };
-    }
+    let tgApp = null;
 
     // Функция для показа уведомлений
     function showNotification(message, isError = false) {
-        tgApp.api.showNotification(message, isError);
+        if (isError) {
+            console.error('Ошибка:', message);
+        }
+        if (window.tgApp && window.tgApp.tg) {
+            window.tgApp.tg.showAlert(message);
+        } else {
+            alert(message);
+        }
+    }
+
+    // Функция ожидания инициализации tgApp
+    function waitForTgApp() {
+        return new Promise((resolve) => {
+            const check = () => {
+                if (window.tgApp) {
+                    resolve(window.tgApp);
+                } else {
+                    setTimeout(check, 100);
+                }
+            };
+            check();
+        });
     }
 
     // Инициализация пользователя
     async function initUser() {
         try {
+            // Ждем инициализации tgApp
+            tgApp = await waitForTgApp();
+            console.log('tgApp инициализирован');
+
             // Получаем telegram_id
             const telegramId = tgApp.api.getTelegramId();
             console.log('Получен telegram_id:', telegramId);
@@ -59,7 +57,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('region').value = currentUser.region || '';
                 
                 // Устанавливаем фото профиля
-                setImageWithFallback(photoPreview, currentUser.photo_url);
+                if (currentUser.photo_url) {
+                    photoPreview.src = `${window.tgApp.api.STATIC_BASE_URL}${currentUser.photo_url}`;
+                }
             }
         } catch (error) {
             console.error('Ошибка при инициализации пользователя:', error);
@@ -97,6 +97,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         
         try {
+            if (!window.tgApp) {
+                throw new Error('Telegram WebApp не инициализирован');
+            }
+
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;

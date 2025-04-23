@@ -1,5 +1,5 @@
 // Инициализация Telegram WebApp
-const tg = window.Telegram.WebApp;
+let tg = null;
 
 // Базовый путь к API
 const API_BASE_URL = 'https://tg-bd.onrender.com/api';
@@ -35,30 +35,20 @@ function initTelegramWebApp() {
 
         tg = window.Telegram.WebApp;
 
-        // Проверяем наличие initData и валидируем его
-        if (!tg.initData || !tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-            console.warn('initData или данные пользователя не найдены, пробуем повторную инициализацию...');
-            
-            // Пробуем получить данные через небольшую задержку
-            setTimeout(() => {
-                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                    console.log('Данные пользователя получены после задержки');
-                    window.tgApp.tg = tg;
-                } else {
-                    console.error('Не удалось получить данные пользователя');
-                }
-            }, 1000);
+        // Проверяем наличие initData
+        if (!tg.initData) {
+            console.warn('initData не найден');
         }
+
+        // Активируем WebApp
+        tg.ready();
+        tg.expand();
 
         console.log('Telegram WebApp инициализирован:', {
             version: tg.version,
             platform: tg.platform,
             initDataUnsafe: tg.initDataUnsafe
         });
-
-        // Активируем WebApp
-        tg.ready();
-        tg.expand();
 
         return tg;
     } catch (error) {
@@ -209,11 +199,11 @@ const api = {
     }
 };
 
-// Инициализируем Telegram WebApp
-tg = initTelegramWebApp();
-
-// Экспорт для использования в других файлах
-window.tgApp = {
-    tg,
-    api
-}; 
+// Инициализируем Telegram WebApp и экспортируем объект для использования в других файлах
+document.addEventListener('DOMContentLoaded', () => {
+    tg = initTelegramWebApp();
+    window.tgApp = {
+        tg,
+        api
+    };
+}); 
