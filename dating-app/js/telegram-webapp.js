@@ -54,8 +54,7 @@ const api = {
         try {
             const defaultHeaders = {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Origin': 'https://kileniass.github.io'
+                'Accept': 'application/json'
             };
 
             // Настройки запроса
@@ -201,11 +200,11 @@ const api = {
     },
 
     async getLikes(userId) {
-        return this.request(`/users/${userId}/likes`);
+        return this.request(`/likes/${userId}`);
     },
 
     async matchUsers(userId1, userId2) {
-        return this.request(`/users/${userId1}/match/${userId2}`, {
+        return this.request(`/matches/${userId1}/${userId2}`, {
             method: 'POST'
         });
     },
@@ -213,7 +212,8 @@ const api = {
     async uploadPhoto(file, telegramId) {
         const formData = new FormData();
         formData.append('file', file);
-
+        formData.append('telegram_id', telegramId);
+        
         return this.request(`/users/${telegramId}/photo`, {
             method: 'POST',
             body: formData

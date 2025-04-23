@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUser = null;
 
     // Базовые пути для изображений
-    const IMAGES_BASE_PATH = '/dating-app/image';
+    const IMAGES_BASE_PATH = '/image';
     const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
 
     // Функция для безопасной загрузки изображений
