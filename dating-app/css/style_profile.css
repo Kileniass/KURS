@@ -165,19 +165,30 @@
   height: 100%; /* Занимает всю высоту родительского контейнера */
 }
 
-.profile__image-container {
-  width: 290px; /* Ширина контейнера */
-  height: 150px; /* Высота контейнера */
-  overflow: hidden; /* Обрезает избыточное изображение */
-  margin-bottom: 15px; /* Отступ между фото и остальным контентом */
-  border-radius: 5px; /* Закругление углов контейнера */
+.profile__image {
+  width: 310px;
+  height: 450px;
+  overflow: hidden;
+  border-radius: 5px;
+  position: relative;
+  background-color: #2e2e2e;
+  margin-bottom: 15px;
 }
 
 .img__profile {
-  width: 100%; /* Занимает всю ширину контейнера */
-  height: 100%; /* Занимает всю высоту контейнера */
-  object-fit: fill; /* Растягивает изображение на всю область контейнера */
-  border-radius: 5px; /* Закругление углов изображения */
+  width: 310px;
+  height: 450px;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto;
+}
+
+.img__profile[src=""] {
+  display: none;
+}
+
+.img__profile:not([src]) {
+  display: none;
 }
 
 .profile__info {
