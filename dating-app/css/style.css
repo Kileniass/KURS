@@ -167,12 +167,46 @@
   height: 450px;
   overflow: hidden;
   border-radius: 5px;
+  background-color: #2e2e2e;
+  position: relative;
 }
 
 .img__card {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
+  display: block;
+  background-color: #2e2e2e;
+}
+
+.img__card[src=""] {
+  display: none;
+}
+
+.img__card:not([src]) {
+  display: none;
+}
+
+.img__card.error {
+  display: none;
+}
+
+.img__card.error + .img__placeholder {
+  display: block;
+}
+
+.img__placeholder {
+  display: none;
+  width: 100%;
+  height: 100%;
+  background-color: #2e2e2e;
+  background-image: url('../image/hero-image.jpg');
+  background-size: cover;
+  background-position: center;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .hero__content {
