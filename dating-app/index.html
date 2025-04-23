@@ -5,13 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RacingConnect</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="/KURS/dating-app/css/style.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        // Проверка первого входа
+        document.addEventListener('DOMContentLoaded', async () => {
+            const tg = window.Telegram.WebApp;
+            try {
+                const telegramId = tg.initDataUnsafe.user.id.toString();
+                const response = await fetch(`https://tg-bd.onrender.com/api/users/${telegramId}`);
+                const user = await response.json();
+                
+                // Если профиль не заполнен, редиректим на страницу заполнения
+                if (!user || !user.name) {
+                    window.location.href = 'profile-change.html';
+                }
+            } catch (error) {
+                console.error('Error checking profile:', error);
+                // При ошибке также редиректим на заполнение профиля
+                window.location.href = 'profile-change.html';
+            }
+        });
+    </script>
 </head>
 <body>
     <header class="header">
         <div class="header__container">
             <div class="logo-title__container">
-                <img src="/KURS/dating-app/image/racingconnect_logo.png" alt="Логотип RacingConnect" class="img__logo">
+                <img src="image/racingconnect_logo.png" alt="Логотип RacingConnect" class="img__logo">
                 <div class="header__logo">
                     <a href="#">RacingConnect</a>
                 </div>
@@ -22,7 +42,7 @@
     <section class="hero">
         <div class="container hero__container">
             <div class="hero__image">
-                <img src="/KURS/dating-app/image/placeholder_image.jpg" alt="Фото анкеты" class="img__card" id="profilePhoto">
+                <img src="image/placeholder_image.jpg" alt="Фото анкеты" class="img__card" id="profilePhoto">
             </div>
             <div class="hero__content">
                 <div class="hero__name">
@@ -44,19 +64,20 @@
 
     <footer class="footer">
         <div class="footer__nav">
-            <a href="/KURS/dating-app/index.html" target="_self">
-                <img src="/KURS/dating-app/image/icon_profiles.png" alt="Профили">
+            <a href="index.html" target="_self">
+                <img src="image/icon_profiles.png" alt="Профили">
             </a>
-            <a href="/KURS/dating-app/likes.html" target="_self">
-                <img src="/KURS/dating-app/image/icon_likes.png" alt="Лайки">
+            <a href="likes.html" target="_self">
+                <img src="image/icon_likes.png" alt="Лайки">
             </a>
-            <a href="/KURS/dating-app/profile.html" target="_self">
-                <img src="/KURS/dating-app/image/icon_profile.png" alt="Профиль">
+            <a href="profile.html" target="_self">
+                <img src="image/icon_profile.png" alt="Профиль">
             </a>
         </div>
     </footer>
 
-    <script src="/KURS/dating-app/js/telegram-webapp.js"></script>
-    <script src="/KURS/dating-app/js/index.js"></script>
+    <script src="js/telegram-webapp.js"></script>
+    <script src="js/init.js"></script>
+    <script src="js/index.js"></script>
 </body>
 </html> 

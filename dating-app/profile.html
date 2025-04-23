@@ -16,23 +16,27 @@
                     <a href="#">RacingConnect</a>
                 </div>
             </div>
+            <div class="header__nav">
+                <a href="profile-change.html" class="btn__edit">Редактировать</a>
+            </div>
         </div>
     </header>
 
     <section class="profile">
-        <div class="profile__container">
-            <div class="profile__image-container">
+        <div class="container profile__container">
+            <div class="profile__image">
                 <img src="image/placeholder_image.jpg" alt="Фото профиля" class="img__profile" id="profilePhoto">
             </div>
-            <div class="profile__info">
-                <h2 class="profile__name" id="profileName">Загрузка...</h2>
-                <a href="profile-change.html" target="_self" class="btn__edit">Изменить</a>
-            </div>
-            <div class="profile__quote">
-                <p class="profile__text" id="profileAbout">Загрузка...</p>
-            </div>
-            <div class="profile__car">
-                <p class="profile__car-title" id="profileCar">Загрузка...</p>
+            <div class="profile__content">
+                <div class="profile__name">
+                    <h1 class="profile__title" id="profileName">Загрузка...</h1>
+                </div>
+                <div class="profile__quote">
+                    <p class="profile__subtitle" id="profileAbout">Загрузка...</p>
+                </div>
+                <div class="profile__car">
+                    <p class="profile__car-title" id="profileCar">Загрузка...</p>
+                </div>
             </div>
         </div>
     </section>
@@ -52,6 +56,7 @@
     </footer>
 
     <script src="js/telegram-webapp.js"></script>
+    <script src="js/init.js"></script>
     <script src="js/profile.js"></script>
 </body>
 </html> 
