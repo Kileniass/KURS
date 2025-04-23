@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактирование профиля - RacingConnect</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/style_profile-change.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header__container">
+            <div class="logo-title__container">
+                <img src="image/racingconnect_logo.png" alt="Логотип RacingConnect" class="img__logo">
+                <div class="header__logo">
+                    <a href="#">RacingConnect</a>
+                </div>
+            </div>
+            <button class="btn__save" id="saveButton">Сохранить</button>
+        </div>
+    </header>
+
+    <section class="profile-edit">
+        <div class="profile-edit__container">
+            <div class="profile-edit__image-container">
+                <label for="car-image" class="image-upload">
+                    <img src="image/placeholder_image.jpg" alt="Фото автомобиля" class="img__car" id="carImagePreview">
+                    <span class="upload-icon">+</span>
+                </label>
+                <input type="file" id="car-image" class="hidden-input" accept="image/*">
+            </div>
+            <form class="profile-edit__form" id="profileForm">
+                <div class="form-group">
+                    <label for="name">Укажите ваше имя</label>
+                    <input type="text" id="name" placeholder="Имя" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label for="age">Укажите ваш возраст</label>
+                    <input type="number" id="age" placeholder="Возраст" class="input-field" min="18" max="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="bio">Расскажите о себе</label>
+                    <textarea id="bio" placeholder="Введите сообщение" class="textarea-field" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="car-info">Напишите ваше авто</label>
+                    <input type="text" id="car-info" placeholder="Введите сообщение" class="input-field" required>
+                </div>
+                <div class="form-group">
+                    <label for="region">Укажите ваш регион</label>
+                    <input type="text" id="region" placeholder="Регион" class="input-field" required>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <script src="js/telegram-webapp.js"></script>
+    <script src="js/profile-change.js"></script>
+</body>
+</html> 

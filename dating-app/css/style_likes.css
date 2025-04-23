@@ -1,0 +1,239 @@
+*
+{
+    padding: 0px;
+    margin: 0px;
+    border: none;}
+  
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+  
+    a,
+    a:link,
+    a:visited {
+      color: inherit;
+      text-decoration: none;
+    }
+  
+    a:hover {
+      text-decoration: none;
+    }
+  
+    aside,
+    nav,
+    footer,
+    header,
+    section,
+    main {
+      display: block;
+    }
+  
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p {
+      font-size: inherit;
+      font-weight: inherit;
+    }
+  
+    ul,
+    ul li {
+      list-style: none;
+    }
+  
+    img {
+      vertical-align: top;
+    }
+  
+    img,
+    svg {
+      max-width: 100%;
+      height: auto;
+    }
+  
+    address {
+      font-style: normal;
+    }
+  
+    input,
+    textarea,
+    button,
+    select {
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+      background-color: transparent;
+    }
+  
+    input::-ms-clear {
+      display: none;
+    }
+  
+    button,
+    input[type="submit"] {
+      display: inline-block;
+      box-shadow: none;
+      background-color: transparent;
+      background: none;
+      cursor: pointer;
+    }
+  
+    input:focus,
+    input:active,
+    button:focus,
+    button:active {
+      outline: none;
+    }
+  
+    button::-moz-focus-inner {
+      padding: 0;
+      border: 0;
+    }
+  
+    label {
+      cursor: pointer;
+    }
+  
+    legend {
+      display: block;
+    }
+  
+    @font-face {
+      font-family: "Montserrat";
+      src: url("../fonts/Montserrat-VariableFont_wght.ttf") format("truetype");
+      font-weight: 400 700;
+      font-style: normal;
+    }
+  
+    html,
+    body {
+        width: 100%;
+      margin: 0;
+      font-family: "Montserrat", sans-serif;
+      background: #2e2e2e;
+      color: #ffffff;
+      scroll-behavior: smooth;
+    }
+
+/* Шапка */
+.header {
+    height: 50px;
+    width: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Выравнивание по центру */
+    background-color: #333;
+    color: white;
+  }
+  
+  .logo-title__container {
+    display: flex;
+    align-items: center; /* Выравнивание по вертикали */
+  }
+  
+  .img__logo {
+    width: 25px;
+    height: 25px;
+    margin-right: 5px; /* Отступ между логотипом и текстом */
+  }
+  
+  .header__logo a {
+    text-decoration: none;
+    color: white;
+    font-size: 14px;
+  }
+  
+  /* Главный контент */
+  .hero {
+    width: 320px;
+    height: 640px; /* Установлен новый размер высоты */
+    background-color: #333;
+    color: rgb(255, 255, 255);
+  }
+  
+  .hero__container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* Выравнивание содержимого по центру */
+    padding: 10px;
+    height: 100%; /* Занимает всю высоту родительского контейнера */
+  }
+  
+  .hero__content {
+    width: 310px;
+    padding: 15px;
+    text-align: center; /* Выравнивание текста по центру */
+  }
+  
+  .hero__icon {
+    margin-top: 0; /* Убираем лишний отступ сверху */
+  }
+  
+  .img__heart {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .hero__message {
+    margin-top: 20px; /* Отступ между иконкой и текстом */
+  }
+  
+  .hero__text {
+    font-size: 16px;
+    margin: 0;
+    line-height: 1.5; /* Увеличиваем интервал между строками */
+  }
+  
+  .hero__button {
+    margin-top: 30px; /* Отступ между текстом и кнопкой */
+    display: flex; /* Используем Flexbox для выравнивания */
+    justify-content: center; /* Кнопка по центру */
+  }
+  
+  /* Стили для кнопки */
+  .btn__view-profiles {
+    display: inline-block;
+    width: 150px; /* Ширина кнопки */
+    height: 25px; /* Высота кнопки */
+    border-radius: 15px; /* Закругление углов */
+    border: 1px solid #000; /* Тонкая черная граница */
+    background-color: rgb(255, 255, 255); /* Белый фон */
+    text-align: center; /* Выравнивание текста по центру */
+    line-height: 25px; /* Вертикальное выравнивание текста */
+    text-decoration: none; /* Убираем подчеркивание ссылки */
+    cursor: pointer; /* Курсор указывает на кликабельность */
+  }
+  
+  /* Стили для текста внутри кнопки */
+  .btn__text {
+    font-size: 14px; /* Размер текста */
+    display: inline-block; /* Обеспечивает правильное выравнивание */
+    color: #000 !important;
+  }
+  
+  /* Футер */
+  .footer {
+    width: 320px;
+    height: 50px;
+    background-color: #333;
+    color: white;
+    display: flex;
+    justify-content: center; /* Выравнивание по центру */
+    align-items: center;
+  }
+  
+  .footer__nav {
+    display: flex;
+    gap: 30px; /* Расстояние между иконками */
+  }
+  
+  .footer__nav img {
+    width: 25px;
+    height: 25px;
+  }
