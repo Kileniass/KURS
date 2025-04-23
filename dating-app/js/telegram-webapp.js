@@ -126,7 +126,8 @@ const api = {
             const defaultHeaders = {
                 'Accept': 'application/json',
                 'X-Client-Version': '1.0.0',
-                'X-Request-ID': Math.random().toString(36).substring(7)
+                'X-Request-ID': Math.random().toString(36).substring(7),
+                'Origin': 'https://kileniass.github.io'
             };
 
             if (options.body && !(options.body instanceof FormData)) {
@@ -136,7 +137,6 @@ const api = {
             const requestOptions = {
                 ...options,
                 mode: 'cors',
-                credentials: 'include',
                 headers: {
                     ...defaultHeaders,
                     ...options.headers
@@ -234,9 +234,9 @@ const api = {
             const response = await fetch(`${API_BASE_URL}/photos/upload/${sessionId}`, {
                 method: 'POST',
                 body: formData,
-                credentials: 'include',
                 headers: {
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Origin': 'https://kileniass.github.io'
                 }
             });
 
