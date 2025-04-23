@@ -61,15 +61,15 @@ function initTelegramWebApp() {
 let notificationQueue = [];
 let isShowingNotification = false;
 let lastNotificationTime = 0;
+const MIN_NOTIFICATION_INTERVAL = 2000; // Минимальный интервал между уведомлениями
 
 // Функция для показа уведомлений с очередью
 async function showNextNotification() {
     if (isShowingNotification || notificationQueue.length === 0) return;
     
-    // Проверяем, прошло ли достаточно времени с последнего уведомления
     const now = Date.now();
-    if (now - lastNotificationTime < 1000) {
-        setTimeout(showNextNotification, 1000);
+    if (now - lastNotificationTime < MIN_NOTIFICATION_INTERVAL) {
+        setTimeout(showNextNotification, MIN_NOTIFICATION_INTERVAL);
         return;
     }
     
@@ -87,11 +87,13 @@ async function showNextNotification() {
                 lastNotificationTime = Date.now();
             } catch (error) {
                 if (error.message === 'WebAppPopupOpened') {
-                    // Возвращаем сообщение обратно в очередь
+                    // Если попап уже открыт, ждем и пробуем снова
                     notificationQueue.unshift({ message, isError });
-                    setTimeout(showNextNotification, 1000);
+                    setTimeout(showNextNotification, MIN_NOTIFICATION_INTERVAL);
                 } else {
                     console.error('Ошибка при показе уведомления:', error);
+                    // Используем обычный alert как запасной вариант
+                    alert(message);
                 }
             }
         } else {
@@ -100,9 +102,19 @@ async function showNextNotification() {
         }
     } finally {
         isShowingNotification = false;
+        // Планируем следующее уведомление с задержкой
         if (notificationQueue.length > 0) {
-            setTimeout(showNextNotification, 1000);
+            setTimeout(showNextNotification, MIN_NOTIFICATION_INTERVAL);
         }
+    }
+}
+
+// Функция для добавления уведомления в очередь
+function addNotification(message, isError = false) {
+    // Проверяем, нет ли уже такого же сообщения в очереди
+    if (!notificationQueue.some(n => n.message === message)) {
+        notificationQueue.push({ message, isError });
+        showNextNotification();
     }
 }
 
@@ -133,10 +145,9 @@ const api = {
             console.log('Отправка запроса к API:', {
                 url,
                 method: options.method || 'GET',
-                headers: requestOptions.headers,
-                body: options.body instanceof FormData ? 'FormData' : options.body
+                headers: requestOptions.headers
             });
-            
+
             try {
                 const response = await fetch(url, requestOptions);
                 console.log('Получен ответ:', {
@@ -144,7 +155,7 @@ const api = {
                     statusText: response.statusText,
                     headers: Object.fromEntries(response.headers.entries())
                 });
-                
+
                 if (!response.ok) {
                     let errorMessage;
                     try {
@@ -155,7 +166,7 @@ const api = {
                     }
                     throw new Error(errorMessage);
                 }
-                
+
                 const data = await response.json();
                 console.log('Получены данные:', data);
                 return data;
@@ -170,7 +181,6 @@ const api = {
         } catch (error) {
             console.error('API Error:', error);
             
-            // Формируем понятное сообщение об ошибке
             let errorMessage = 'Произошла ошибка при выполнении запроса';
             if (error.message.includes('Failed to fetch')) {
                 errorMessage = 'Не удалось подключиться к серверу. Проверьте подключение к интернету.';
@@ -182,7 +192,7 @@ const api = {
                 errorMessage = error.message;
             }
             
-            this.showNotification(errorMessage, true);
+            addNotification(errorMessage, true);
             throw error;
         }
     },
@@ -262,8 +272,7 @@ const api = {
 
     // Безопасный показ уведомлений через очередь
     showNotification(message, isError = false) {
-        notificationQueue.push({ message, isError });
-        showNextNotification();
+        addNotification(message, isError);
     }
 };
 
