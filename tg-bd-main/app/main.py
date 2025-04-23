@@ -1,13 +1,20 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from app import models, crud, database, utils, schemas
 from app.database import SessionLocal, engine
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas import AboutUpdate
 from fastapi.openapi.utils import get_openapi
+import os
+import shutil
+from pathlib import Path
 
 # Создание таблиц в базе данных (если их ещё нет)
 models.Base.metadata.create_all(bind=engine)
+
+# Создаем директорию для загруженных файлов
+UPLOAD_DIR = Path("static/photos")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title="Telegram WebApp for Auto Enthusiasts",
@@ -143,3 +150,41 @@ def update_about(data: AboutUpdate, db: Session = Depends(get_db)):
         return {"message": "About section updated", "about": user.about}
     else:
         return {"message": "User not found"}
+
+@app.post("/api/users/{telegram_id}/photo",
+    summary="Загрузка фотографии профиля",
+    description="Загружает фотографию профиля пользователя",
+    response_description="URL загруженной фотографии")
+async def upload_photo(
+    telegram_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Проверяем существование пользователя
+        user = crud.get_user_by_telegram_id(db, telegram_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Проверяем тип файла
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+
+        # Создаем уникальное имя файла
+        file_extension = os.path.splitext(file.filename)[1]
+        filename = f"user_{telegram_id}{file_extension}"
+        file_path = UPLOAD_DIR / filename
+
+        # Сохраняем файл
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Обновляем URL фотографии в базе данных
+        photo_url = f"/static/photos/{filename}"
+        user.photo_url = photo_url
+        db.commit()
+
+        return {"photo_url": photo_url}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

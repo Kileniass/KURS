@@ -122,25 +122,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error('Возраст должен быть от 18 до 100 лет');
             }
             
-            // Создаем объект с данными профиля
-            const profileData = {
-                telegram_id: telegramId,
-                name,
-                age,
-                car,
-                region,
-                about
-            };
-            
             // Если есть новое фото, загружаем его
+            let photoUrl = null;
             if (photoFile) {
                 try {
                     const uploadResult = await tgApp.api.uploadPhoto(photoFile, telegramId);
                     if (uploadResult && uploadResult.photo_url) {
-                        profileData.photo_url = uploadResult.photo_url;
-                        console.log('Фото успешно загружено:', uploadResult.photo_url);
-                    } else {
-                        throw new Error('Не удалось получить URL загруженного фото');
+                        photoUrl = uploadResult.photo_url;
+                        console.log('Фото успешно загружено:', photoUrl);
                     }
                 } catch (error) {
                     console.error('Ошибка при загрузке фото:', error);
@@ -148,13 +137,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             
+            // Создаем объект с данными профиля
+            const profileData = {
+                telegram_id: telegramId,
+                name,
+                age,
+                car,
+                region,
+                about,
+                photo_url: photoUrl
+            };
+            
             // Обновляем профиль пользователя
             const updatedUser = await tgApp.api.createProfile(profileData);
             console.log('Профиль обновлен:', updatedUser);
-            
-            if (updatedUser && updatedUser.photo_url) {
-                console.log('URL фото в обновленном профиле:', updatedUser.photo_url);
-            }
             
             showNotification('Профиль успешно сохранен');
             

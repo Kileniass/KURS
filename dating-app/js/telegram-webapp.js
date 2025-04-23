@@ -1,15 +1,14 @@
 // Инициализация Telegram WebApp
 const tg = window.Telegram.WebApp;
 
-// Базовый путь к API и изображениям
+// Базовый путь к API
 const API_BASE_URL = 'https://tg-bd.onrender.com/api';
-const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
-const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
+const STATIC_BASE_URL = 'https://tg-bd.onrender.com';
 
 // Функция для установки изображения с запасным вариантом
 function setImageWithFallback(imgElement, photoUrl) {
     if (!photoUrl) {
-        imgElement.src = DEFAULT_PROFILE_IMAGE;
+        imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
         return;
     }
 
@@ -18,13 +17,13 @@ function setImageWithFallback(imgElement, photoUrl) {
         imgElement.src = photoUrl;
     } else {
         // Если URL относительный, добавляем базовый путь
-        imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
+        imgElement.src = `${STATIC_BASE_URL}${photoUrl}`;
     }
 
     // Обработка ошибок загрузки изображения
     imgElement.onerror = () => {
         console.warn('Ошибка загрузки изображения:', photoUrl);
-        imgElement.src = DEFAULT_PROFILE_IMAGE;
+        imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
     };
 }
 
@@ -77,11 +76,15 @@ const api = {
     async request(endpoint, options = {}) {
         try {
             const defaultHeaders = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Origin': 'https://kileniass.github.io'
             };
 
-            // Настройки запроса
+            // Если отправляем JSON, добавляем заголовок Content-Type
+            if (options.body && !(options.body instanceof FormData)) {
+                defaultHeaders['Content-Type'] = 'application/json';
+            }
+
             const requestOptions = {
                 ...options,
                 mode: 'cors',
@@ -91,31 +94,23 @@ const api = {
                 }
             };
 
-            // Для FormData не устанавливаем Content-Type
-            if (options.body instanceof FormData) {
-                delete requestOptions.headers['Content-Type'];
-            }
-
             const url = `${API_BASE_URL}${endpoint}`;
             console.log('Отправка запроса к API:', {
                 url,
-                options: requestOptions
+                method: options.method || 'GET',
+                headers: requestOptions.headers
             });
             
             const response = await fetch(url, requestOptions);
             
             if (!response.ok) {
-                if (response.status === 404) {
-                    return null;
-                }
-                const errorData = await response.json().catch(() => ({}));
+                const errorText = await response.text();
                 console.error('Ошибка API:', {
                     status: response.status,
                     statusText: response.statusText,
-                    url: response.url,
-                    errorData
+                    error: errorText
                 });
-                throw new Error(errorData.detail || `Ошибка сервера: ${response.status}`);
+                throw new Error(errorText || `Ошибка сервера: ${response.status}`);
             }
             
             const data = await response.json();
@@ -128,48 +123,7 @@ const api = {
         }
     },
 
-    // Безопасный показ уведомлений с очередью
-    async showNotification(message, isError = false) {
-        // Добавляем уведомление в очередь
-        notificationQueue.push({ message, isError });
-        
-        // Если уже показывается уведомление, выходим
-        if (isShowingNotification) {
-            return;
-        }
-        
-        // Показываем уведомления из очереди
-        while (notificationQueue.length > 0) {
-            isShowingNotification = true;
-            const notification = notificationQueue[0];
-            
-            try {
-                if (!tg) {
-                    alert(notification.message);
-                } else {
-                    await new Promise((resolve) => {
-                        try {
-                            tg.showAlert(notification.message, () => resolve());
-                        } catch (error) {
-                            console.error('Ошибка при показе уведомления:', error);
-                            alert(notification.message);
-                            resolve();
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Ошибка при показе уведомления:', error);
-                alert(notification.message);
-            }
-            
-            // Удаляем показанное уведомление из очереди
-            notificationQueue.shift();
-        }
-        
-        isShowingNotification = false;
-    },
-
-    // Получение telegram_id с проверками
+    // Получение telegram_id
     getTelegramId() {
         if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
             throw new Error('Данные пользователя недоступны');
@@ -179,16 +133,7 @@ const api = {
 
     // Инициализация пользователя
     async initUser(telegramId) {
-        try {
-            // Пробуем инициализировать пользователя
-            return await this.request(`/init/${telegramId}`);
-        } catch (error) {
-            // Если произошла ошибка, пробуем получить профиль
-            if (error.message.includes('404') || error.message.includes('Failed to fetch')) {
-                return await this.request(`/users/${telegramId}`);
-            }
-            throw error;
-        }
+        return this.request(`/init/${telegramId}`);
     },
 
     // Методы для работы с профилем
@@ -227,17 +172,10 @@ const api = {
         return this.request(`/likes/${userId}`);
     },
 
-    async matchUsers(userId1, userId2) {
-        return this.request(`/matches/${userId1}/${userId2}`, {
-            method: 'POST'
-        });
-    },
-
     async uploadPhoto(file, telegramId) {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('telegram_id', telegramId);
             
             console.log('Начало загрузки фото:', {
                 filename: file.name,
@@ -247,23 +185,26 @@ const api = {
             
             const response = await this.request(`/users/${telegramId}/photo`, {
                 method: 'POST',
-                body: formData,
-                headers: {
-                    // Не устанавливаем Content-Type для FormData
-                    // Браузер сам установит правильный заголовок с boundary
-                }
+                body: formData
             });
             
-            console.log('Ответ сервера при загрузке фото:', response);
-            
-            if (!response || !response.photo_url) {
-                throw new Error('Не удалось получить URL загруженного фото');
-            }
-            
+            console.log('Фото успешно загружено:', response);
             return response;
         } catch (error) {
             console.error('Ошибка при загрузке фото:', error);
             throw error;
+        }
+    },
+
+    // Безопасный показ уведомлений
+    async showNotification(message, isError = false) {
+        if (isError) {
+            console.error('Ошибка:', message);
+        }
+        if (tg && tg.showAlert) {
+            await tg.showAlert(message);
+        } else {
+            alert(message);
         }
     }
 };
