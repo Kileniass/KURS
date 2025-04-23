@@ -27,6 +27,7 @@ function setImageWithFallback(imgElement, photoUrl) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     let tgApp = null;
+    let sessionId = null;
 
     // Функция ожидания инициализации tgApp
     async function waitForTgApp(timeout = 5000) {
@@ -46,120 +47,87 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Функция для загрузки лайков
-    async function loadLikes() {
-        try {
-            // Ждем инициализации tgApp
-            tgApp = await waitForTgApp();
-            console.log('tgApp инициализирован');
+    try {
+        // Ждем инициализации tgApp
+        tgApp = await waitForTgApp();
+        console.log('tgApp инициализирован');
 
-            if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
-                throw new Error('Telegram WebApp не инициализирован корректно');
-            }
+        if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
+            throw new Error('Telegram WebApp не инициализирован корректно');
+        }
 
-            const telegramId = tgApp.tg.initDataUnsafe.user.id;
-            console.log('Получен telegram_id:', telegramId);
+        // Получаем session_id
+        sessionId = await tgApp.api.getSessionId();
+        console.log('Получен session_id:', sessionId);
+
+        // Загружаем лайки
+        const likes = await tgApp.api.getLikes(sessionId);
+        console.log('Лайки получены:', likes);
+
+        const likesContainer = document.getElementById('likesContainer');
+        if (!likesContainer) {
+            throw new Error('Контейнер для лайков не найден');
+        }
+
+        if (!likes || likes.length === 0) {
+            likesContainer.innerHTML = '<p class="no-likes">У вас пока нет лайков</p>';
+            return;
+        }
+
+        // Создаем карточки для каждого лайка
+        likesContainer.innerHTML = '';
+        likes.forEach(like => {
+            const card = document.createElement('div');
+            card.className = 'like-card';
             
-            const likes = await tgApp.api.getLikes(telegramId);
-            console.log('Получены лайки:', likes);
-
-            const heroContainer = document.querySelector('.hero__container');
-            if (!heroContainer) {
-                throw new Error('Контейнер для лайков не найден');
-            }
-            
-            if (!likes || likes.length === 0) {
-                // Если лайков нет, показываем сообщение по умолчанию
-                heroContainer.innerHTML = `
-                    <div class="hero__content">
-                        <div class="hero__icon">
-                            <img src="image/icon_like.png" alt="Иконка сердца" class="img__heart">
-                        </div>
-                        <div class="hero__message">
-                            <p class="hero__text">Здесь пока никого нет.</p>
-                            <p class="hero__text">Вас пока никто не лайкнул, не огорчайся, это временно.</p>
-                        </div>
-                        <div class="hero__button">
-                            <a href="index.html" target="_self" class="btn__view-profiles">
-                                <span class="btn__text">Смотреть анкеты</span>
-                            </a>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            // Если есть лайки, создаем новую разметку
-            heroContainer.innerHTML = `
-                <div class="likes">
-                    <div class="likes__container">
-                        <h2 class="likes__title">Вас лайкнули</h2>
-                        <div class="likes__list"></div>
-                    </div>
+            card.innerHTML = `
+                <div class="like-photo">
+                    <img src="${like.photo_url || `${tgApp.STATIC_BASE_URL}/photos/hero-image.jpg`}" alt="${like.name}">
+                </div>
+                <div class="like-info">
+                    <h3>${like.name}, ${like.age}</h3>
+                    <p class="car-info">${like.car}</p>
+                    <p class="region">${like.region}</p>
+                    <p class="about">${like.about || 'Нет описания'}</p>
+                    <button class="like-button" data-user-id="${like.id}">Ответить лайком</button>
                 </div>
             `;
 
-            const likesList = document.querySelector('.likes__list');
-            if (!likesList) {
-                throw new Error('Список лайков не найден');
-            }
+            likesContainer.appendChild(card);
+        });
 
-            // Добавляем карточки пользователей
-            likes.forEach(user => {
-                const card = document.createElement('div');
-                card.className = 'like-card';
-                card.innerHTML = `
-                    <img src="" alt="${user.name}" class="like-card__image">
-                    <div class="like-card__content">
-                        <h3 class="like-card__name">${user.name}</h3>
-                        <p class="like-card__car">${user.car || 'Автомобиль не указан'}</p>
-                        <p class="like-card__about">${user.about || 'Нет описания'}</p>
-                        <button class="like-card__button" data-user-id="${user.id}">Ответить взаимностью</button>
-                    </div>
-                `;
-                
-                // Устанавливаем изображение с запасным вариантом
-                const imgElement = card.querySelector('.like-card__image');
-                if (imgElement) {
-                    tgApp.api.setImageWithFallback(imgElement, user.photo_url);
-                }
-                
-                likesList.appendChild(card);
-            });
-
-            // Добавляем обработчики для кнопок
-            document.querySelectorAll('.like-card__button').forEach(button => {
-                button.addEventListener('click', async () => {
-                    try {
-                        const userId = button.dataset.userId;
-                        if (!userId) {
-                            throw new Error('ID пользователя не найден');
-                        }
-
-                        await tgApp.api.likeProfile(userId, telegramId);
-                        
-                        // Показываем уведомление об успешном матче
-                        tgApp.api.showNotification('Поздравляем! У вас взаимная симпатия!');
-
-                        // Обновляем список лайков
-                        await loadLikes();
-                    } catch (error) {
-                        console.error('Error matching users:', error);
-                        tgApp.api.showNotification('Ошибка при создании пары: ' + error.message, true);
+        // Добавляем обработчики для кнопок лайка
+        document.querySelectorAll('.like-button').forEach(button => {
+            button.addEventListener('click', async () => {
+                try {
+                    const userId = button.dataset.userId;
+                    if (!userId || !sessionId) {
+                        throw new Error('Не удалось получить ID пользователя или session_id');
                     }
-                });
-            });
 
-        } catch (error) {
-            console.error('Error loading likes:', error);
-            if (tgApp && tgApp.api) {
-                tgApp.api.showNotification('Ошибка при загрузке лайков: ' + error.message, true);
-            } else {
-                alert('Ошибка при загрузке лайков: ' + error.message);
-            }
+                    await tgApp.api.likeProfile(userId, sessionId);
+                    tgApp.api.showNotification('Лайк отправлен!');
+                    
+                    // Удаляем карточку после успешного лайка
+                    button.closest('.like-card').remove();
+                    
+                    // Проверяем, остались ли еще лайки
+                    if (document.querySelectorAll('.like-card').length === 0) {
+                        likesContainer.innerHTML = '<p class="no-likes">У вас пока нет лайков</p>';
+                    }
+                } catch (error) {
+                    console.error('Ошибка при отправке лайка:', error);
+                    tgApp.api.showNotification(error.message, true);
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error('Ошибка при загрузке лайков:', error);
+        if (tgApp && tgApp.api) {
+            tgApp.api.showNotification(error.message, true);
+        } else {
+            alert(error.message);
         }
     }
-
-    // Загружаем лайки при загрузке страницы
-    await loadLikes();
 }); 

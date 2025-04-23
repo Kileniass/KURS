@@ -123,110 +123,84 @@ function setImageWithFallback(imgElement, photoUrl) {
 
 // Утилиты для работы с API
 const api = {
-    // Метод для создания/обновления профиля
-    async createProfile(profileData) {
-        try {
-            const response = await request(`${API_BASE_URL}/profiles`, {
-                method: 'POST',
-                body: JSON.stringify(profileData)
-            });
-            return response;
-        } catch (error) {
-            console.error('Ошибка при создании профиля:', error);
-            throw new Error('Не удалось сохранить профиль: ' + error.message);
+    // Получение session_id из WebApp
+    async getSessionId() {
+        if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
+            throw new Error('Данные пользователя недоступны');
         }
+        
+        const telegramId = tg.initDataUnsafe.user.id;
+        const response = await request(`${API_BASE_URL}/init/${telegramId}`);
+        if (!response || !response.session_id) {
+            throw new Error('Не удалось получить session_id');
+        }
+        return response.session_id;
     },
 
+    // Методы для работы с профилем
     async getProfile(sessionId) {
-        return this.request(`/users/${sessionId}`);
+        return request(`${API_BASE_URL}/users/${sessionId}`);
     },
 
-    async getNextProfile(currentSessionId) {
-        return this.request(`/profiles/next?current_user_id=${currentSessionId}`);
-    },
-
-    async likeProfile(userId, currentSessionId) {
-        return this.request(`/profiles/${userId}/like?current_user_id=${currentSessionId}`, {
-            method: 'POST'
+    async createProfile(profileData) {
+        return request(`${API_BASE_URL}/users/${profileData.session_id}`, {
+            method: 'PUT',
+            body: JSON.stringify(profileData)
         });
     },
 
-    async dislikeProfile(userId, currentSessionId) {
-        return this.request(`/profiles/${userId}/dislike?current_user_id=${currentSessionId}`, {
-            method: 'POST'
+    async getNextProfile(sessionId) {
+        return request(`${API_BASE_URL}/profiles/next?session_id=${sessionId}`);
+    },
+
+    async likeProfile(userId, sessionId) {
+        return request(`${API_BASE_URL}/profiles/${userId}/like`, {
+            method: 'POST',
+            body: JSON.stringify({ session_id: sessionId })
+        });
+    },
+
+    async dislikeProfile(userId, sessionId) {
+        return request(`${API_BASE_URL}/profiles/${userId}/dislike`, {
+            method: 'POST',
+            body: JSON.stringify({ session_id: sessionId })
         });
     },
 
     async getMatches(sessionId) {
-        return this.request(`/matches/${sessionId}`);
+        return request(`${API_BASE_URL}/matches/${sessionId}`);
     },
 
     async getLikes(sessionId) {
-        return this.request(`/likes/${sessionId}`);
+        return request(`${API_BASE_URL}/likes/${sessionId}`);
     },
 
     async uploadPhoto(sessionId, file) {
-        try {
-            if (!sessionId) {
-                throw new Error('Session ID is required');
+        const formData = new FormData();
+        formData.append('photo', file);
+        
+        const response = await fetch(`${API_BASE_URL}/photos/upload/${sessionId}`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Origin': 'https://kileniass.github.io'
             }
+        });
 
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await fetch(`${API_BASE_URL}/photos/upload/${sessionId}`, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to upload photo');
-            }
-
-            const data = await response.json();
-            return data.photo_url;
-        } catch (error) {
-            console.error('Error uploading photo:', error);
-            addNotification('Ошибка загрузки фотографии: ' + error.message, true);
-            throw error;
+        if (!response.ok) {
+            throw new Error(`Ошибка загрузки фото: ${response.status}`);
         }
+
+        const data = await response.json();
+        return data.photo_url;
+    },
+
+    async initUser(telegramId) {
+        return request(`${API_BASE_URL}/init/${telegramId}`);
     },
 
     showNotification(message, isError = false) {
         addNotification(message, isError);
-    },
-
-    async initUser(telegramId) {
-        try {
-            const response = await this.request(`/init/${telegramId}`, 'GET');
-            
-            if (response.is_new) {
-                // Если пользователь новый, перенаправляем на страницу создания профиля
-                window.location.href = 'profile-change.html';
-            } else {
-                // Если пользователь существует, сохраняем его данные
-                this.user = {
-                    id: response.user_id,
-                    session_id: response.session_id,
-                    name: response.name,
-                    age: response.age,
-                    car: response.car,
-                    region: response.region,
-                    about: response.about,
-                    photo_url: response.photo_url
-                };
-                
-                // Перенаправляем на главную страницу
-                window.location.href = 'index.html';
-            }
-        } catch (error) {
-            console.error('Error initializing user:', error);
-            this.showNotification('Ошибка инициализации пользователя');
-        }
     }
 };
 

@@ -1,13 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const likeBtn = document.getElementById('likeBtn');
-    const dislikeBtn = document.getElementById('dislikeBtn');
-    let currentProfile = null;
-    let currentUserId = null;
     let tgApp = null;
-
-    // Устанавливаем текст кнопок сразу
-    likeBtn.innerHTML = 'Лайк';
-    dislikeBtn.innerHTML = 'Дизлайк';
+    let currentUserId = null;
+    let currentProfile = null;
+    let sessionId = null;
 
     // Функция ожидания инициализации tgApp
     async function waitForTgApp(timeout = 5000) {
@@ -27,130 +22,130 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Инициализация пользователя
-    async function initUser() {
-        try {
-            // Ждем инициализации tgApp
-            tgApp = await waitForTgApp();
-            console.log('tgApp инициализирован');
+    try {
+        // Ждем инициализации tgApp
+        tgApp = await waitForTgApp();
+        console.log('tgApp инициализирован');
 
-            if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
-                throw new Error('Telegram WebApp не инициализирован корректно');
-            }
+        if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
+            throw new Error('Telegram WebApp не инициализирован корректно');
+        }
 
-            // Получаем telegram_id из Telegram WebApp
-            const telegramId = tgApp.tg.initDataUnsafe.user.id;
-            console.log('Получен telegram_id:', telegramId);
-            
-            // Инициализируем пользователя на сервере
-            const user = await tgApp.api.initUser(telegramId);
-            if (!user || !user.user_id) {
-                throw new Error('Не удалось получить данные пользователя');
-            }
-            
-            currentUserId = user.user_id;
-            console.log('User initialized:', user);
-            
-            // Загружаем первый профиль
-            await loadNextProfile();
-        } catch (error) {
-            console.error('Error initializing user:', error);
-            tgApp.api.showNotification('Ошибка при инициализации пользователя: ' + error.message, true);
+        // Получаем session_id
+        sessionId = await tgApp.api.getSessionId();
+        console.log('Получен session_id:', sessionId);
+
+        // Получаем профиль пользователя
+        const user = await tgApp.api.getProfile(sessionId);
+        console.log('Профиль пользователя получен:', user);
+
+        if (!user) {
+            throw new Error('Не удалось получить профиль пользователя');
+        }
+
+        currentUserId = user.id;
+        console.log('Текущий ID пользователя:', currentUserId);
+
+        // Загружаем следующий профиль
+        currentProfile = await tgApp.api.getNextProfile(sessionId);
+        console.log('Следующий профиль загружен:', currentProfile);
+
+        if (!currentProfile) {
+            throw new Error('Нет доступных профилей');
+        }
+
+        // Обновляем UI
+        const profileName = document.getElementById('profileName');
+        const profileAge = document.getElementById('profileAge');
+        const profileCar = document.getElementById('profileCar');
+        const profileRegion = document.getElementById('profileRegion');
+        const profileAbout = document.getElementById('profileAbout');
+        const profilePhoto = document.getElementById('profilePhoto');
+
+        if (profileName) profileName.textContent = currentProfile.name;
+        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
+        if (profileCar) profileCar.textContent = currentProfile.car;
+        if (profileRegion) profileRegion.textContent = currentProfile.region;
+        if (profileAbout) profileAbout.textContent = currentProfile.about;
+        
+        if (profilePhoto) {
+            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+        }
+
+        // Обработчики кнопок
+        const likeButton = document.getElementById('likeButton');
+        const dislikeButton = document.getElementById('dislikeButton');
+
+        if (likeButton) {
+            likeButton.addEventListener('click', async () => {
+                try {
+                    if (!currentProfile || !sessionId) {
+                        throw new Error('Нет активного профиля или session_id');
+                    }
+
+                    await tgApp.api.likeProfile(currentProfile.id, sessionId);
+                    tgApp.api.showNotification('Лайк отправлен!');
+                    
+                    // Загружаем следующий профиль
+                    currentProfile = await tgApp.api.getNextProfile(sessionId);
+                    if (currentProfile) {
+                        // Обновляем UI
+                        if (profileName) profileName.textContent = currentProfile.name;
+                        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
+                        if (profileCar) profileCar.textContent = currentProfile.car;
+                        if (profileRegion) profileRegion.textContent = currentProfile.region;
+                        if (profileAbout) profileAbout.textContent = currentProfile.about;
+                        if (profilePhoto) {
+                            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+                        }
+                    } else {
+                        tgApp.api.showNotification('Больше нет доступных профилей');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при отправке лайка:', error);
+                    tgApp.api.showNotification(error.message, true);
+                }
+            });
+        }
+
+        if (dislikeButton) {
+            dislikeButton.addEventListener('click', async () => {
+                try {
+                    if (!currentProfile || !sessionId) {
+                        throw new Error('Нет активного профиля или session_id');
+                    }
+
+                    await tgApp.api.dislikeProfile(currentProfile.id, sessionId);
+                    tgApp.api.showNotification('Дизлайк отправлен');
+                    
+                    // Загружаем следующий профиль
+                    currentProfile = await tgApp.api.getNextProfile(sessionId);
+                    if (currentProfile) {
+                        // Обновляем UI
+                        if (profileName) profileName.textContent = currentProfile.name;
+                        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
+                        if (profileCar) profileCar.textContent = currentProfile.car;
+                        if (profileRegion) profileRegion.textContent = currentProfile.region;
+                        if (profileAbout) profileAbout.textContent = currentProfile.about;
+                        if (profilePhoto) {
+                            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+                        }
+                    } else {
+                        tgApp.api.showNotification('Больше нет доступных профилей');
+                    }
+                } catch (error) {
+                    console.error('Ошибка при отправке дизлайка:', error);
+                    tgApp.api.showNotification(error.message, true);
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Ошибка при инициализации:', error);
+        if (tgApp && tgApp.api) {
+            tgApp.api.showNotification(error.message, true);
+        } else {
+            alert(error.message);
         }
     }
-
-    // Загрузка следующего профиля
-    async function loadNextProfile() {
-        try {
-            if (!currentUserId) {
-                throw new Error('User ID не найден');
-            }
-
-            const profile = await tgApp.api.getNextProfile(currentUserId);
-            
-            if (!profile) {
-                tgApp.api.setImageWithFallback(
-                    document.getElementById('profilePhoto'),
-                    null
-                );
-                document.getElementById('profileName').textContent = 'Нет доступных профилей';
-                document.getElementById('profileAbout').textContent = 'Попробуйте позже';
-                document.getElementById('profileCar').textContent = '';
-                return;
-            }
-            
-            currentProfile = profile;
-            
-            // Заполняем данные профиля
-            const profilePhoto = document.getElementById('profilePhoto');
-            if (profilePhoto) {
-                tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
-            }
-            
-            const profileName = document.getElementById('profileName');
-            if (profileName) {
-                profileName.textContent = `${currentProfile.name}, ${currentProfile.age}`;
-            }
-            
-            const profileAbout = document.getElementById('profileAbout');
-            if (profileAbout) {
-                profileAbout.textContent = currentProfile.about || 'Нет описания';
-            }
-            
-            const profileCar = document.getElementById('profileCar');
-            if (profileCar) {
-                profileCar.textContent = currentProfile.car || 'Не указано';
-            }
-            
-            // Обновляем текст кнопок
-            likeBtn.innerHTML = 'Лайк';
-            dislikeBtn.innerHTML = 'Дизлайк';
-            
-        } catch (error) {
-            console.error('Error loading profile:', error);
-            tgApp.api.showNotification('Ошибка при загрузке профиля: ' + error.message, true);
-        }
-    }
-
-    // Обработчик кнопки лайка
-    likeBtn.addEventListener('click', async () => {
-        if (!currentProfile || !currentUserId) {
-            tgApp.api.showNotification('Профиль не загружен', true);
-            return;
-        }
-        
-        try {
-            const result = await tgApp.api.likeProfile(currentProfile.id, currentUserId);
-            
-            if (result.match) {
-                tgApp.api.showNotification('У вас новое совпадение!');
-            } else {
-                tgApp.api.showNotification('Профиль понравился!');
-            }
-            
-            await loadNextProfile();
-        } catch (error) {
-            console.error('Error liking profile:', error);
-            tgApp.api.showNotification('Ошибка при отправке лайка: ' + error.message, true);
-        }
-    });
-
-    // Обработчик кнопки дизлайка
-    dislikeBtn.addEventListener('click', async () => {
-        if (!currentProfile || !currentUserId) {
-            tgApp.api.showNotification('Профиль не загружен', true);
-            return;
-        }
-        
-        try {
-            await tgApp.api.dislikeProfile(currentProfile.id, currentUserId);
-            await loadNextProfile();
-        } catch (error) {
-            console.error('Error disliking profile:', error);
-            tgApp.api.showNotification('Ошибка при отправке дизлайка: ' + error.message, true);
-        }
-    });
-
-    // Инициализируем пользователя при загрузке страницы
-    await initUser();
 }); 

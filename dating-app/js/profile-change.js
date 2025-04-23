@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Функция ожидания инициализации tgApp с таймаутом
-    function waitForTgApp(timeout = 5000) {
+    async function waitForTgApp(timeout = 5000) {
         return new Promise((resolve, reject) => {
             const startTime = Date.now();
             
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tgApp = await waitForTgApp();
             console.log('tgApp инициализирован');
 
-            if (!tgApp.tg) {
+            if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
                 throw new Error('Telegram WebApp не инициализирован корректно');
             }
 
