@@ -1,5 +1,32 @@
 // Инициализация Telegram WebApp
-let tg = null;
+const tg = window.Telegram.WebApp;
+
+// Базовый путь к API и изображениям
+const API_BASE_URL = 'https://tg-bd.onrender.com/api';
+const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
+const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
+
+// Функция для установки изображения с запасным вариантом
+function setImageWithFallback(imgElement, photoUrl) {
+    if (!photoUrl) {
+        imgElement.src = DEFAULT_PROFILE_IMAGE;
+        return;
+    }
+
+    // Проверяем, является ли URL абсолютным
+    if (photoUrl.startsWith('http')) {
+        imgElement.src = photoUrl;
+    } else {
+        // Если URL относительный, добавляем базовый путь
+        imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
+    }
+
+    // Обработка ошибок загрузки изображения
+    imgElement.onerror = () => {
+        console.warn('Ошибка загрузки изображения:', photoUrl);
+        imgElement.src = DEFAULT_PROFILE_IMAGE;
+    };
+}
 
 function initTelegramWebApp() {
     try {
@@ -40,9 +67,6 @@ function initTelegramWebApp() {
         return null;
     }
 }
-
-// Конфигурация API
-const API_BASE_URL = 'https://tg-bd.onrender.com/api';
 
 // Очередь уведомлений
 let notificationQueue = [];
@@ -210,14 +234,37 @@ const api = {
     },
 
     async uploadPhoto(file, telegramId) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('telegram_id', telegramId);
-        
-        return this.request(`/users/${telegramId}/photo`, {
-            method: 'POST',
-            body: formData
-        });
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('telegram_id', telegramId);
+            
+            console.log('Начало загрузки фото:', {
+                filename: file.name,
+                size: file.size,
+                type: file.type
+            });
+            
+            const response = await this.request(`/users/${telegramId}/photo`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    // Не устанавливаем Content-Type для FormData
+                    // Браузер сам установит правильный заголовок с boundary
+                }
+            });
+            
+            console.log('Ответ сервера при загрузке фото:', response);
+            
+            if (!response || !response.photo_url) {
+                throw new Error('Не удалось получить URL загруженного фото');
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('Ошибка при загрузке фото:', error);
+            throw error;
+        }
     }
 };
 

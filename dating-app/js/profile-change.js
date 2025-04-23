@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             photoFile = file;
             const reader = new FileReader();
             reader.onload = (e) => {
-                setImageWithFallback(photoPreview, e.target.result);
+                photoPreview.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -138,6 +138,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const uploadResult = await tgApp.api.uploadPhoto(photoFile, telegramId);
                     if (uploadResult && uploadResult.photo_url) {
                         profileData.photo_url = uploadResult.photo_url;
+                        console.log('Фото успешно загружено:', uploadResult.photo_url);
+                    } else {
+                        throw new Error('Не удалось получить URL загруженного фото');
                     }
                 } catch (error) {
                     console.error('Ошибка при загрузке фото:', error);
@@ -148,6 +151,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Обновляем профиль пользователя
             const updatedUser = await tgApp.api.createProfile(profileData);
             console.log('Профиль обновлен:', updatedUser);
+            
+            if (updatedUser && updatedUser.photo_url) {
+                console.log('URL фото в обновленном профиле:', updatedUser.photo_url);
+            }
             
             showNotification('Профиль успешно сохранен');
             

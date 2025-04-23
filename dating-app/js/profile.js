@@ -1,6 +1,3 @@
-// Инициализация Telegram WebApp
-const tg = window.Telegram.WebApp;
-
 // Базовый путь к изображениям
 const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
 const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
