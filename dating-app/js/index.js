@@ -64,17 +64,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('profileAbout').textContent = currentProfile.about || 'Нет описания';
             document.getElementById('profileCar').textContent = currentProfile.car || 'Не указано';
             
-            // Обновляем иконки кнопок
-            setImageWithFallback(
-                document.querySelector('#likeBtn img'),
-                `${IMAGES_BASE_PATH}/icon_like.png`,
-                'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgMjEuMzVsLTEuNDUtMS4zMkM1LjQgMTUuMzYgMiAxMi4yOCAyIDguNSAyIDUuNDIgNC40MiAzIDcuNSAzYzEuNzQgMCAzLjQxLjgxIDQuNSAyLjA5QzEzLjA5IDMuODEgMTQuNzYgMyAxNi41IDMgMTkuNTggMyAyMiA1LjQyIDIyIDguNWMwIDMuNzgtMy40IDYuODYtOC41NSAxMS41M0wxMiAyMS4zNXoiLz48L3N2Zz4='
-            );
-            setImageWithFallback(
-                document.querySelector('#dislikeBtn img'),
-                `${IMAGES_BASE_PATH}/icon_dislike.png`,
-                'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgMjEuMzVsLTEuNDUtMS4zMkM1LjQgMTUuMzYgMiAxMi4yOCAyIDguNSAyIDUuNDIgNC40MiAzIDcuNSAzYzEuNzQgMCAzLjQxLjgxIDQuNSAyLjA5QzEzLjA5IDMuODEgMTQuNzYgMyAxNi41IDMgMTkuNTggMyAyMiA1LjQyIDIyIDguNWMwIDMuNzgtMy40IDYuODYtOC41NSAxMS41M0wxMiAyMS4zNXoiLz48L3N2Zz4='
-            );
+            // Обновляем текст кнопок
+            likeBtn.innerHTML = 'Лайк';
+            dislikeBtn.innerHTML = 'Дизлайк';
             
         } catch (error) {
             console.error('Error loading profile:', error);
