@@ -60,10 +60,18 @@ function initTelegramWebApp() {
 // Очередь уведомлений
 let notificationQueue = [];
 let isShowingNotification = false;
+let lastNotificationTime = 0;
 
 // Функция для показа уведомлений с очередью
 async function showNextNotification() {
     if (isShowingNotification || notificationQueue.length === 0) return;
+    
+    // Проверяем, прошло ли достаточно времени с последнего уведомления
+    const now = Date.now();
+    if (now - lastNotificationTime < 1000) {
+        setTimeout(showNextNotification, 1000);
+        return;
+    }
     
     isShowingNotification = true;
     const { message, isError } = notificationQueue.shift();
@@ -73,24 +81,28 @@ async function showNextNotification() {
             console.error('Ошибка:', message);
         }
         
-        // Добавляем задержку между уведомлениями
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
         if (tg && tg.showAlert) {
             try {
                 await tg.showAlert(message);
+                lastNotificationTime = Date.now();
             } catch (error) {
-                if (error.message !== 'WebAppPopupOpened') {
+                if (error.message === 'WebAppPopupOpened') {
+                    // Возвращаем сообщение обратно в очередь
+                    notificationQueue.unshift({ message, isError });
+                    setTimeout(showNextNotification, 1000);
+                } else {
                     console.error('Ошибка при показе уведомления:', error);
                 }
             }
         } else {
             alert(message);
+            lastNotificationTime = Date.now();
         }
     } finally {
         isShowingNotification = false;
-        // Показываем следующее уведомление, если оно есть
-        setTimeout(() => showNextNotification(), 500);
+        if (notificationQueue.length > 0) {
+            setTimeout(showNextNotification, 1000);
+        }
     }
 }
 
@@ -102,7 +114,6 @@ const api = {
                 'Accept': 'application/json'
             };
 
-            // Если отправляем JSON и это не FormData, добавляем заголовок Content-Type
             if (options.body && !(options.body instanceof FormData)) {
                 defaultHeaders['Content-Type'] = 'application/json';
             }
@@ -119,8 +130,7 @@ const api = {
             const url = `${API_BASE_URL}${endpoint}`;
             console.log('Отправка запроса к API:', {
                 url,
-                method: options.method || 'GET',
-                headers: requestOptions.headers
+                method: options.method || 'GET'
             });
             
             const response = await fetch(url, requestOptions);
@@ -141,12 +151,19 @@ const api = {
             return data;
         } catch (error) {
             console.error('API Error:', error);
+            
+            // Формируем понятное сообщение об ошибке
+            let errorMessage = 'Произошла ошибка при выполнении запроса';
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Не удалось подключиться к серверу. Проверьте подключение к интернету.';
+            } else if (error.message.includes('NetworkError')) {
+                errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
+            } else {
+                errorMessage = error.message;
+            }
+            
             // Добавляем уведомление в очередь
-            notificationQueue.push({
-                message: error.message || 'Произошла ошибка при выполнении запроса',
-                isError: true
-            });
-            showNextNotification();
+            this.showNotification(errorMessage, true);
             throw error;
         }
     },
