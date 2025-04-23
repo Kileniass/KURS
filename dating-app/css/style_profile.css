@@ -151,113 +151,91 @@
 
 /* Профиль */
 .profile {
-    width: 320px;
-    height: 720px;
-    background-color: #2E2E2E;
-    position: relative;
-    overflow: hidden;
+  width: 320px;
+  height: 640px; /* Установленная высота */
+  background-color: #333;
+  color: white;
 }
 
 .profile__container {
-    padding: 0;
-    height: 100%;
-    position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  height: 100%; /* Занимает всю высоту родительского контейнера */
 }
 
-.profile__image {
-    position: relative;
-    width: 100%;
-    height: 450px;
-    margin: 0;
-}
-
-.profile__image::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 50%;
-    background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(46,46,46,1));
-    pointer-events: none;
+.profile__image-container {
+  width: 290px; /* Ширина контейнера */
+  height: 150px; /* Высота контейнера */
+  overflow: hidden; /* Обрезает избыточное изображение */
+  margin-bottom: 15px; /* Отступ между фото и остальным контентом */
+  border-radius: 5px; /* Закругление углов контейнера */
 }
 
 .img__profile {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  width: 100%; /* Занимает всю ширину контейнера */
+  height: 100%; /* Занимает всю высоту контейнера */
+  object-fit: fill; /* Растягивает изображение на всю область контейнера */
+  border-radius: 5px; /* Закругление углов изображения */
 }
 
-.profile__content {
-    position: absolute;
-    bottom: 80px;
-    left: 0;
-    width: 100%;
-    padding: 20px;
-    z-index: 2;
+.profile__info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
 .profile__name {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+  font-size: 16px;
+  margin: 0;
+  margin-right: 5px; /* Отступ между именем и кнопкой */
 }
 
-.profile__title {
-    font-size: 24px;
-    font-weight: 600;
-    color: #fff !important;
-    margin: 0;
-}
-
-.profile__subtitle {
-    font-size: 16px;
-    color: #fff;
-    margin: 0;
-    line-height: 1.4;
-}
-
+/* Стили для кнопки "Изменить" */
 .btn__edit {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    display: inline-block;
-    padding: 8px 20px;
-    background-color: white !important;
-    color: black !important;
-    border-radius: 50px;
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    z-index: 2;
+  display: inline-block;
+  width: 150px; /* Ширина кнопки */
+  height: 25px; /* Высота кнопки */
+  border-radius: 15px; /* Закругление углов */
+  border: 1px solid #000; /* Тонкая черная граница */
+  background-color: white; /* Белый фон */
+  color: #000 !important; /* Чёрный текст */
+  font-size: 14px; /* Размер шрифта */
+  font-family: Arial, sans-serif; /* Шрифт */
+  text-align: center; /* Выравнивание текста по центру */
+  line-height: 25px; /* Вертикальное выравнивание текста */
+  text-decoration: none; /* Убираем подчеркивание ссылки */
+  cursor: pointer; /* Курсор указывает на кликабельность */
 }
 
+.profile__quote {
+  text-align: center;
+}
+
+.profile__text {
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Футер */
 .footer {
-    position: fixed;
-    bottom: 0;
-    width: 320px;
-    height: 60px;
-    background-color: #2E2E2E;
-    border-top: 1px solid #3d3d3d;
-    z-index: 10;
+  width: 320px;
+  height: 50px;
+  background-color: #333;
+  color: white;
+  display: flex;
+  justify-content: center; /* Выравнивание по центру */
+  align-items: center;
 }
 
 .footer__nav {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    height: 100%;
-    padding: 0 20px;
+  display: flex;
+  gap: 30px; /* Расстояние между иконками */
 }
 
 .footer__nav img {
-    width: 24px;
-    height: 24px;
-    opacity: 0.7;
-}
-
-.footer__nav a.active img {
-    opacity: 1;
+  width: 25px;
+  height: 25px;
 }
