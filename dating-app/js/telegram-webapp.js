@@ -44,6 +44,10 @@ function initTelegramWebApp() {
 // Конфигурация API
 const API_BASE_URL = 'https://tg-bd.onrender.com';
 
+// Очередь уведомлений
+let notificationQueue = [];
+let isShowingNotification = false;
+
 // Утилиты для работы с API
 const api = {
     async request(endpoint, options = {}) {
@@ -68,24 +72,12 @@ const api = {
                 delete requestOptions.headers['Content-Type'];
             }
 
-            // Добавляем обработку no-cors для GET запросов
-            if (options.method === undefined || options.method === 'GET') {
-                requestOptions.mode = 'no-cors';
-                delete requestOptions.headers['Content-Type'];
-                delete requestOptions.headers['Accept'];
-            }
-
             console.log('Отправка запроса к API:', {
                 url: `${API_BASE_URL}${endpoint}`,
                 options: requestOptions
             });
             
             const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
-            
-            // Для no-cors режима возвращаем пустой объект, так как ответ будет opaque
-            if (requestOptions.mode === 'no-cors') {
-                return {};
-            }
             
             if (!response.ok) {
                 if (response.status === 404) {
@@ -111,21 +103,45 @@ const api = {
         }
     },
 
-    // Безопасный показ уведомлений
-    showNotification(message, isError = false) {
-        if (!tg) {
-            alert(message);
+    // Безопасный показ уведомлений с очередью
+    async showNotification(message, isError = false) {
+        // Добавляем уведомление в очередь
+        notificationQueue.push({ message, isError });
+        
+        // Если уже показывается уведомление, выходим
+        if (isShowingNotification) {
             return;
         }
-
-        try {
-            // Используем только showAlert, так как showPopup может быть недоступен
-            tg.showAlert(message);
-        } catch (error) {
-            console.error('Ошибка при показе уведомления:', error);
-            // В случае ошибки показываем обычный alert
-            alert(message);
+        
+        // Показываем уведомления из очереди
+        while (notificationQueue.length > 0) {
+            isShowingNotification = true;
+            const notification = notificationQueue[0];
+            
+            try {
+                if (!tg) {
+                    alert(notification.message);
+                } else {
+                    await new Promise((resolve) => {
+                        try {
+                            tg.showAlert(notification.message, () => resolve());
+                        } catch (error) {
+                            console.error('Ошибка при показе уведомления:', error);
+                            alert(notification.message);
+                            resolve();
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Ошибка при показе уведомления:', error);
+                alert(notification.message);
+            }
+            
+            // Удаляем показанное уведомление из очереди
+            notificationQueue.shift();
         }
+        
+        isShowingNotification = false;
     },
 
     // Получение telegram_id с проверками
@@ -139,27 +155,27 @@ const api = {
     // Инициализация пользователя
     async initUser(telegramId) {
         try {
-            // Сначала пробуем получить пользователя
-            const user = await this.request(`/user/${telegramId}`, {
-                method: 'GET',
-                mode: 'no-cors'
-            });
-
-            // Если не получилось получить пользователя, создаем нового
-            if (!user || Object.keys(user).length === 0) {
+            // Пробуем получить пользователя
+            const user = await this.request(`/user/${telegramId}`);
+            
+            if (!user) {
+                // Если пользователь не найден, создаем нового
                 return await this.request('/user', {
                     method: 'POST',
                     body: JSON.stringify({ telegram_id: telegramId })
                 });
             }
-
+            
             return user;
         } catch (error) {
             // Если произошла ошибка, пробуем создать нового пользователя
-            return await this.request('/user', {
-                method: 'POST',
-                body: JSON.stringify({ telegram_id: telegramId })
-            });
+            if (error.message.includes('404') || error.message.includes('Failed to fetch')) {
+                return await this.request('/user', {
+                    method: 'POST',
+                    body: JSON.stringify({ telegram_id: telegramId })
+                });
+            }
+            throw error;
         }
     },
 
