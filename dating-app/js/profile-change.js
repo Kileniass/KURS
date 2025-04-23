@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Функция для показа уведомлений через API
     function showNotification(message, isError = false) {
-        if (window.tgApp && window.tgApp.api) {
-            window.tgApp.api.showNotification(message, isError);
+        if (tgApp && tgApp.api) {
+            tgApp.api.showNotification(message, isError);
         } else {
             if (isError) console.error('Ошибка:', message);
             alert(message);
@@ -96,20 +96,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error('Session ID не найден');
             }
 
+            // Сохраняем файл для последующей загрузки
+            photoFile = file;
+
             // Создаем временный URL для предпросмотра
             const previewUrl = URL.createObjectURL(file);
             photoPreview.src = previewUrl;
 
-            // Загружаем фото на сервер
-            const photoUrl = await tgApp.api.uploadPhoto(sessionId, file);
-            console.log('Фото загружено:', photoUrl);
-
-            // Обновляем предпросмотр с URL с сервера
-            tgApp.api.setImageWithFallback(photoPreview, photoUrl);
-            showNotification('Фото успешно загружено');
+            showNotification('Фото готово к загрузке');
         } catch (error) {
-            console.error('Ошибка загрузки фото:', error);
-            showNotification('Ошибка загрузки фото: ' + error.message, true);
+            console.error('Ошибка при выборе фото:', error);
+            showNotification('Ошибка при выборе фото: ' + error.message, true);
             // В случае ошибки возвращаем предыдущее фото
             if (currentUser?.photo_url) {
                 tgApp.api.setImageWithFallback(photoPreview, currentUser.photo_url);
@@ -122,7 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         
         try {
-            if (!window.tgApp) {
+            if (!tgApp) {
                 throw new Error('Telegram WebApp не инициализирован');
             }
 
@@ -152,11 +149,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             let photoUrl = currentUser?.photo_url;
             if (photoFile) {
                 try {
-                    const uploadResult = await tgApp.api.uploadPhoto(sessionId, photoFile);
-                    if (uploadResult && uploadResult.photo_url) {
-                        photoUrl = uploadResult.photo_url;
-                        console.log('Фото успешно загружено:', photoUrl);
-                    }
+                    photoUrl = await tgApp.api.uploadPhoto(sessionId, photoFile);
+                    console.log('Фото успешно загружено:', photoUrl);
                 } catch (error) {
                     console.error('Ошибка при загрузке фото:', error);
                     showNotification('Ошибка при загрузке фото. Профиль будет сохранен без нового фото.', true);
