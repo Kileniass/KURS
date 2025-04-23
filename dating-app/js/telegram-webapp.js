@@ -111,7 +111,9 @@ const api = {
     async request(endpoint, options = {}) {
         try {
             const defaultHeaders = {
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Client-Version': '1.0.0',
+                'X-Request-ID': Math.random().toString(36).substring(7)
             };
 
             if (options.body && !(options.body instanceof FormData)) {
@@ -130,25 +132,41 @@ const api = {
             const url = `${API_BASE_URL}${endpoint}`;
             console.log('Отправка запроса к API:', {
                 url,
-                method: options.method || 'GET'
+                method: options.method || 'GET',
+                headers: requestOptions.headers,
+                body: options.body instanceof FormData ? 'FormData' : options.body
             });
             
-            const response = await fetch(url, requestOptions);
-            
-            if (!response.ok) {
-                let errorMessage;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.detail || errorData.message || `Ошибка сервера: ${response.status}`;
-                } catch {
-                    errorMessage = `Ошибка сервера: ${response.status}`;
+            try {
+                const response = await fetch(url, requestOptions);
+                console.log('Получен ответ:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
+                
+                if (!response.ok) {
+                    let errorMessage;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail || errorData.message || `Ошибка сервера: ${response.status}`;
+                    } catch {
+                        errorMessage = `Ошибка сервера: ${response.status} ${response.statusText}`;
+                    }
+                    throw new Error(errorMessage);
                 }
-                throw new Error(errorMessage);
+                
+                const data = await response.json();
+                console.log('Получены данные:', data);
+                return data;
+            } catch (fetchError) {
+                console.error('Ошибка при выполнении fetch:', {
+                    error: fetchError,
+                    url,
+                    options: requestOptions
+                });
+                throw fetchError;
             }
-            
-            const data = await response.json();
-            console.log('Получен ответ от API:', data);
-            return data;
         } catch (error) {
             console.error('API Error:', error);
             
@@ -158,11 +176,12 @@ const api = {
                 errorMessage = 'Не удалось подключиться к серверу. Проверьте подключение к интернету.';
             } else if (error.message.includes('NetworkError')) {
                 errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
+            } else if (error.message.includes('CORS')) {
+                errorMessage = 'Ошибка доступа к серверу. Пожалуйста, попробуйте позже.';
             } else {
                 errorMessage = error.message;
             }
             
-            // Добавляем уведомление в очередь
             this.showNotification(errorMessage, true);
             throw error;
         }
