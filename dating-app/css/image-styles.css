@@ -1,0 +1,94 @@
+/* Общие стили для изображений профиля */
+.profile__image,
+.hero__image,
+.profile-edit__image-container {
+    width: 310px;
+    height: 450px;
+    overflow: hidden;
+    border-radius: 5px;
+    background-color: #2e2e2e;
+    position: relative;
+}
+
+.img__profile,
+.img__card,
+.img__car {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    background-color: #2e2e2e;
+}
+
+.img__profile[src=""],
+.img__card[src=""],
+.img__car[src=""] {
+    display: none;
+}
+
+.img__profile:not([src]),
+.img__card:not([src]),
+.img__car:not([src]) {
+    display: none;
+}
+
+.img__profile.error,
+.img__card.error,
+.img__car.error {
+    display: none;
+}
+
+.img__profile.error + .img__placeholder,
+.img__card.error + .img__placeholder,
+.img__car.error + .img__placeholder {
+    display: block;
+}
+
+.img__placeholder {
+    display: none;
+    width: 100%;
+    height: 100%;
+    background-color: #2e2e2e;
+    background-image: url('../image/hero-image.jpg');
+    background-size: cover;
+    background-position: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Стили для контейнера загрузки изображения */
+.image-upload {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.upload-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.5);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.image-upload:hover .upload-icon {
+    opacity: 1;
+}
+
+.hidden-input {
+    display: none;
+} 
