@@ -110,7 +110,7 @@ function setImageWithFallback(imgElement, photoUrl) {
     }
 
     // Проверяем, является ли URL абсолютным
-    const fullUrl = photoUrl.startsWith('http') ? photoUrl : `${API_BASE_URL}${photoUrl}`;
+    const fullUrl = photoUrl.startsWith('http') ? photoUrl : `${STATIC_BASE_URL}${photoUrl}`;
     console.log('Устанавливаем изображение:', fullUrl);
 
     imgElement.src = fullUrl;
@@ -148,20 +148,20 @@ const api = {
     },
 
     async getNextProfile(telegramId) {
-        return request(`${API_BASE_URL}/profiles/next?telegram_id=${telegramId}`);
+        return request(`${API_BASE_URL}/profiles/next?current_user_id=${telegramId}`);
     },
 
     async likeProfile(userId, telegramId) {
         return request(`${API_BASE_URL}/profiles/${userId}/like`, {
             method: 'POST',
-            body: JSON.stringify({ telegram_id: telegramId })
+            body: JSON.stringify({ current_user_id: telegramId })
         });
     },
 
     async dislikeProfile(userId, telegramId) {
         return request(`${API_BASE_URL}/profiles/${userId}/dislike`, {
             method: 'POST',
-            body: JSON.stringify({ telegram_id: telegramId })
+            body: JSON.stringify({ current_user_id: telegramId })
         });
     },
 
@@ -191,6 +191,29 @@ const api = {
 
         const data = await response.json();
         return data.photo_url;
+    },
+
+    setImageWithFallback(imgElement, photoUrl) {
+        if (!imgElement) {
+            console.error('Элемент изображения не найден');
+            return;
+        }
+
+        if (!photoUrl) {
+            console.log('URL фото не указан, используем изображение по умолчанию');
+            imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
+            return;
+        }
+
+        // Проверяем, является ли URL абсолютным
+        const fullUrl = photoUrl.startsWith('http') ? photoUrl : `${STATIC_BASE_URL}${photoUrl}`;
+        console.log('Устанавливаем изображение:', fullUrl);
+
+        imgElement.src = fullUrl;
+        imgElement.onerror = () => {
+            console.error('Ошибка загрузки изображения:', fullUrl);
+            imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
+        };
     },
 
     showNotification(message, isError = false) {

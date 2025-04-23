@@ -27,8 +27,6 @@ function setImageWithFallback(imgElement, photoUrl) {
 // Функция инициализации пользователя
 async function initializeUser() {
     let tgApp = null;
-    let currentUserId = null;
-    let currentProfile = null;
 
     // Функция ожидания инициализации tgApp
     async function waitForTgApp(timeout = 5000) {
@@ -69,16 +67,15 @@ async function initializeUser() {
             throw new Error('Не удалось инициализировать пользователя');
         }
 
-        currentUserId = user.id;
-        console.log('Текущий ID пользователя:', currentUserId);
-
         // Загружаем следующий профиль
-        currentProfile = await tgApp.api.getNextProfile(telegramId);
-        console.log('Следующий профиль загружен:', currentProfile);
+        const nextProfile = await tgApp.api.getNextProfile(telegramId);
+        console.log('Следующий профиль загружен:', nextProfile);
 
-        if (!currentProfile) {
+        if (!nextProfile || !nextProfile.profile) {
             throw new Error('Нет доступных профилей');
         }
+
+        const currentProfile = nextProfile.profile;
 
         // Обновляем UI
         const profileName = document.getElementById('profileName');
@@ -88,11 +85,11 @@ async function initializeUser() {
         const profileAbout = document.getElementById('profileAbout');
         const profilePhoto = document.getElementById('profilePhoto');
 
-        if (profileName) profileName.textContent = currentProfile.name;
-        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
-        if (profileCar) profileCar.textContent = currentProfile.car;
-        if (profileRegion) profileRegion.textContent = currentProfile.region;
-        if (profileAbout) profileAbout.textContent = currentProfile.about;
+        if (profileName) profileName.textContent = currentProfile.name || 'Не указано';
+        if (profileAge) profileAge.textContent = currentProfile.age ? `${currentProfile.age} лет` : 'Не указано';
+        if (profileCar) profileCar.textContent = currentProfile.car || 'Не указано';
+        if (profileRegion) profileRegion.textContent = currentProfile.region || 'Не указано';
+        if (profileAbout) profileAbout.textContent = currentProfile.about || 'Нет описания';
         
         if (profilePhoto) {
             tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
@@ -109,20 +106,25 @@ async function initializeUser() {
                         throw new Error('Нет активного профиля или telegram_id');
                     }
 
-                    await tgApp.api.likeProfile(currentProfile.id, telegramId);
-                    tgApp.api.showNotification('Лайк отправлен!');
+                    const result = await tgApp.api.likeProfile(currentProfile.id, telegramId);
+                    if (result.match) {
+                        tgApp.api.showNotification('У вас новый мэтч!');
+                    } else {
+                        tgApp.api.showNotification('Лайк отправлен!');
+                    }
                     
                     // Загружаем следующий профиль
-                    currentProfile = await tgApp.api.getNextProfile(telegramId);
-                    if (currentProfile) {
+                    const nextProfile = await tgApp.api.getNextProfile(telegramId);
+                    if (nextProfile && nextProfile.profile) {
+                        const profile = nextProfile.profile;
                         // Обновляем UI
-                        if (profileName) profileName.textContent = currentProfile.name;
-                        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
-                        if (profileCar) profileCar.textContent = currentProfile.car;
-                        if (profileRegion) profileRegion.textContent = currentProfile.region;
-                        if (profileAbout) profileAbout.textContent = currentProfile.about;
+                        if (profileName) profileName.textContent = profile.name || 'Не указано';
+                        if (profileAge) profileAge.textContent = profile.age ? `${profile.age} лет` : 'Не указано';
+                        if (profileCar) profileCar.textContent = profile.car || 'Не указано';
+                        if (profileRegion) profileRegion.textContent = profile.region || 'Не указано';
+                        if (profileAbout) profileAbout.textContent = profile.about || 'Нет описания';
                         if (profilePhoto) {
-                            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+                            tgApp.api.setImageWithFallback(profilePhoto, profile.photo_url);
                         }
                     } else {
                         tgApp.api.showNotification('Больше нет доступных профилей');
@@ -145,16 +147,17 @@ async function initializeUser() {
                     tgApp.api.showNotification('Дизлайк отправлен');
                     
                     // Загружаем следующий профиль
-                    currentProfile = await tgApp.api.getNextProfile(telegramId);
-                    if (currentProfile) {
+                    const nextProfile = await tgApp.api.getNextProfile(telegramId);
+                    if (nextProfile && nextProfile.profile) {
+                        const profile = nextProfile.profile;
                         // Обновляем UI
-                        if (profileName) profileName.textContent = currentProfile.name;
-                        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
-                        if (profileCar) profileCar.textContent = currentProfile.car;
-                        if (profileRegion) profileRegion.textContent = currentProfile.region;
-                        if (profileAbout) profileAbout.textContent = currentProfile.about;
+                        if (profileName) profileName.textContent = profile.name || 'Не указано';
+                        if (profileAge) profileAge.textContent = profile.age ? `${profile.age} лет` : 'Не указано';
+                        if (profileCar) profileCar.textContent = profile.car || 'Не указано';
+                        if (profileRegion) profileRegion.textContent = profile.region || 'Не указано';
+                        if (profileAbout) profileAbout.textContent = profile.about || 'Нет описания';
                         if (profilePhoto) {
-                            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+                            tgApp.api.setImageWithFallback(profilePhoto, profile.photo_url);
                         }
                     } else {
                         tgApp.api.showNotification('Больше нет доступных профилей');

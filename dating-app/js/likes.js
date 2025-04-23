@@ -63,65 +63,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         const likes = await tgApp.api.getLikes(telegramId);
         console.log('Лайки получены:', likes);
 
+        // Обновляем UI
         const likesContainer = document.getElementById('likesContainer');
-        if (!likesContainer) {
-            throw new Error('Контейнер для лайков не найден');
+        if (likesContainer) {
+            if (likes && likes.length > 0) {
+                likesContainer.innerHTML = likes.map(like => `
+                    <div class="like-item">
+                        <img src="${like.photo_url || tgApp.STATIC_BASE_URL + '/photos/hero-image.jpg'}" alt="${like.name}" class="like-photo">
+                        <div class="like-info">
+                            <h3>${like.name}, ${like.age}</h3>
+                            <p>${like.car || 'Автомобиль не указан'}</p>
+                            <p>${like.region || 'Регион не указан'}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                likesContainer.innerHTML = '<p>У вас пока нет лайков</p>';
+            }
         }
-
-        if (!likes || likes.length === 0) {
-            likesContainer.innerHTML = '<p class="no-likes">У вас пока нет лайков</p>';
-            return;
-        }
-
-        // Создаем карточки для каждого лайка
-        likes.forEach(like => {
-            const card = document.createElement('div');
-            card.className = 'like-card';
-            
-            card.innerHTML = `
-                <div class="like-photo">
-                    <img src="${like.photo_url || 'default-avatar.png'}" alt="Фото пользователя">
-                </div>
-                <div class="like-info">
-                    <h3>${like.name}</h3>
-                    <p>${like.age} лет</p>
-                    <p>${like.car}</p>
-                    <p>${like.region}</p>
-                    <button class="like-back" data-user-id="${like.id}">Лайкнуть в ответ</button>
-                </div>
-            `;
-
-            likesContainer.appendChild(card);
-        });
-
-        // Добавляем обработчики для кнопок лайка
-        document.querySelectorAll('.like-back').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                try {
-                    const userId = e.target.dataset.userId;
-                    if (!userId || !telegramId) {
-                        throw new Error('Не удалось получить ID пользователя или telegram_id');
-                    }
-
-                    await tgApp.api.likeProfile(userId, telegramId);
-                    tgApp.api.showNotification('Лайк отправлен!');
-                    
-                    // Удаляем карточку после отправки лайка
-                    e.target.closest('.like-card').remove();
-                    
-                    // Если больше нет лайков, показываем сообщение
-                    if (document.querySelectorAll('.like-card').length === 0) {
-                        likesContainer.innerHTML = '<p class="no-likes">У вас пока нет лайков</p>';
-                    }
-                } catch (error) {
-                    console.error('Ошибка при отправке лайка:', error);
-                    tgApp.api.showNotification(error.message, true);
-                }
-            });
-        });
 
     } catch (error) {
-        console.error('Ошибка при инициализации:', error);
+        console.error('Ошибка при загрузке лайков:', error);
         if (tgApp && tgApp.api) {
             tgApp.api.showNotification(error.message, true);
         } else {
