@@ -180,6 +180,13 @@
   border-radius: 5px; /* Закругление углов изображения */
 }
 
+.img__profile.error {
+  background-image: url('../image/hero-image.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .profile__info {
   display: flex;
   align-items: center;
