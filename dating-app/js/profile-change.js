@@ -6,6 +6,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     let photoFile = null;
     let currentUser = null;
 
+    // Функция для показа уведомлений
+    function showNotification(message, isError = false) {
+        try {
+            if (isError) {
+                console.error(message);
+                window.Telegram.WebApp.showAlert(message);
+            } else {
+                console.log(message);
+                window.Telegram.WebApp.showAlert(message);
+            }
+        } catch (error) {
+            console.error('Ошибка при показе уведомления:', error);
+        }
+    }
+
     // Инициализация пользователя
     async function initUser() {
         try {
@@ -42,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Ошибка при инициализации пользователя:', error);
-            tgApp.tg.showAlert('Ошибка при инициализации пользователя: ' + error.message);
+            showNotification('Ошибка при инициализации пользователя: ' + error.message, true);
         }
     }
 
@@ -52,13 +67,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (file) {
             // Проверяем размер файла (не более 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                tgApp.tg.showAlert('Размер файла не должен превышать 5MB');
+                showNotification('Размер файла не должен превышать 5MB', true);
                 return;
             }
             
             // Проверяем тип файла
             if (!file.type.startsWith('image/')) {
-                tgApp.tg.showAlert('Пожалуйста, выберите изображение');
+                showNotification('Пожалуйста, выберите изображение', true);
                 return;
             }
             
@@ -81,8 +96,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Показываем индикатор загрузки
-            tgApp.tg.MainButton.showProgress();
             saveButton.disabled = true;
             
             // Получаем telegram_id из Telegram WebApp
@@ -127,24 +140,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const updatedUser = await tgApp.api.createProfile(profileData);
             console.log('Профиль обновлен:', updatedUser);
             
-            // Показываем уведомление об успехе
-            tgApp.tg.showPopup({
-                title: 'Успех!',
-                message: 'Профиль успешно сохранен',
-                buttons: [{
-                    type: 'ok'
-                }]
-            });
-            
-            // Перенаправляем на страницу профиля
-            window.location.href = 'profile.html';
+            // Показываем уведомление об успехе и перенаправляем
+            showNotification('Профиль успешно сохранен');
+            setTimeout(() => {
+                window.location.href = 'profile.html';
+            }, 1000);
             
         } catch (error) {
             console.error('Ошибка при сохранении профиля:', error);
-            tgApp.tg.showAlert(error.message || 'Произошла ошибка при сохранении профиля');
+            showNotification(error.message || 'Произошла ошибка при сохранении профиля', true);
         } finally {
-            // Скрываем индикатор загрузки
-            tgApp.tg.MainButton.hideProgress();
             saveButton.disabled = false;
         }
     });

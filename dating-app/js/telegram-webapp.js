@@ -13,22 +13,14 @@ try {
         throw new Error('initData не найден');
     }
 
-    // Проверяем валидность initData
-    if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-        console.error('Данные пользователя не найдены');
-        throw new Error('Данные пользователя не найдены');
-    }
-
     console.log('Telegram WebApp успешно инициализирован:', {
-        initData: tg.initData,
         version: tg.version,
-        platform: tg.platform,
-        user: tg.initDataUnsafe.user
+        platform: tg.platform
     });
 
     // Активируем WebApp
-    tg.expand();
     tg.ready();
+    tg.expand();
 } catch (error) {
     console.error('Ошибка при инициализации Telegram WebApp:', error);
 }
@@ -40,30 +32,38 @@ const API_BASE_URL = 'https://tg-bd.onrender.com';
 const api = {
     async request(endpoint, options = {}) {
         try {
-            // Добавляем initData в заголовки
-            const headers = {
+            const defaultHeaders = {
                 'Content-Type': 'application/json',
-                'Telegram-Web-App-Init-Data': tg ? tg.initData : '',
-                ...options.headers,
+                'Accept': 'application/json'
+            };
+
+            // Добавляем CORS заголовки
+            const requestOptions = {
+                ...options,
+                mode: 'cors',
+                credentials: 'include',
+                headers: {
+                    ...defaultHeaders,
+                    ...options.headers
+                }
             };
 
             console.log('Отправка запроса к API:', {
                 url: `${API_BASE_URL}${endpoint}`,
-                options: {...options, headers}
+                options: requestOptions
             });
             
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                ...options,
-                headers
-            });
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
             
             if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
                 console.error('Ошибка API:', {
                     status: response.status,
                     statusText: response.statusText,
-                    url: response.url
+                    url: response.url,
+                    errorData
                 });
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(errorData.message || `Ошибка сервера: ${response.status}`);
             }
             
             const data = await response.json();
@@ -71,8 +71,13 @@ const api = {
             return data;
         } catch (error) {
             console.error('API Error:', error);
-            if (tg) {
-                tg.showAlert('Произошла ошибка при выполнении запроса: ' + error.message);
+            // Используем более безопасный способ показа ошибок
+            if (tg && tg.showAlert) {
+                try {
+                    tg.showAlert('Произошла ошибка при выполнении запроса: ' + error.message);
+                } catch (popupError) {
+                    console.error('Ошибка при показе уведомления:', popupError);
+                }
             }
             throw error;
         }
