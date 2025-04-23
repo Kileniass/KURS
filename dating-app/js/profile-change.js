@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let photoFile = null;
     let currentUser = null;
     let tgApp = null;
+    let sessionId = null;
 
     // Функция для показа уведомлений через API
     function showNotification(message, isError = false) {
@@ -46,13 +47,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error('Telegram WebApp не инициализирован корректно');
             }
 
-            // Получаем telegram_id
-            const telegramId = tgApp.api.getTelegramId();
-            console.log('Получен telegram_id:', telegramId);
+            // Получаем session_id
+            sessionId = await tgApp.api.getSessionId();
+            console.log('Получен session_id:', sessionId);
             
-            // Инициализируем пользователя на сервере
-            currentUser = await tgApp.api.initUser(telegramId);
-            console.log('Пользователь инициализирован:', currentUser);
+            // Получаем профиль пользователя
+            currentUser = await tgApp.api.getProfile(sessionId);
+            console.log('Профиль пользователя получен:', currentUser);
             
             // Заполняем форму данными пользователя
             if (currentUser) {
@@ -74,27 +75,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Предпросмотр фото
-    photoInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // Проверяем размер файла (не более 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                showNotification('Размер файла не должен превышать 5MB', true);
-                return;
-            }
-            
-            // Проверяем тип файла
-            if (!file.type.startsWith('image/')) {
-                showNotification('Пожалуйста, выберите изображение', true);
-                return;
-            }
-            
-            photoFile = file;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                photoPreview.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+    photoInput.addEventListener('change', async function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!['image/jpeg', 'image/png'].includes(file.type)) {
+            showNotification('error', 'Please select a JPEG or PNG image');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showNotification('error', 'Image size should not exceed 5MB');
+            return;
+        }
+
+        try {
+            const photoUrl = await tgApp.api.uploadPhoto(sessionId, file);
+            document.getElementById('preview').src = photoUrl;
+            showNotification('success', 'Photo uploaded successfully');
+        } catch (error) {
+            console.error('Error uploading photo:', error);
+            showNotification('error', 'Failed to upload photo');
         }
     });
 
@@ -113,9 +116,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             saveButton.disabled = true;
-            
-            // Получаем telegram_id
-            const telegramId = tgApp.api.getTelegramId();
             
             // Проверяем обязательные поля
             const name = document.getElementById('name').value.trim();
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let photoUrl = currentUser?.photo_url;
             if (photoFile) {
                 try {
-                    const uploadResult = await tgApp.api.uploadPhoto(photoFile, telegramId);
+                    const uploadResult = await tgApp.api.uploadPhoto(sessionId, photoFile);
                     if (uploadResult && uploadResult.photo_url) {
                         photoUrl = uploadResult.photo_url;
                         console.log('Фото успешно загружено:', photoUrl);
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Создаем объект с данными профиля
             const profileData = {
-                telegram_id: telegramId,
+                session_id: sessionId,
                 name,
                 age,
                 car,

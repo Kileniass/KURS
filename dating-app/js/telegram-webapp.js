@@ -2,7 +2,8 @@
 let tg = null;
 
 // Базовый путь к API
-const API_BASE_URL = 'https://tg-bd.onrender.com/api';
+const API_BASE_URL = 'https://tg-bd.onrender.com';
+const API_PATH = '/api';
 const STATIC_BASE_URL = 'https://tg-bd.onrender.com';
 
 // Функция для установки изображения с запасным вариантом
@@ -125,8 +126,7 @@ const api = {
             const defaultHeaders = {
                 'Accept': 'application/json',
                 'X-Client-Version': '1.0.0',
-                'X-Request-ID': Math.random().toString(36).substring(7),
-                'Origin': 'https://kileniass.github.io'
+                'X-Request-ID': Math.random().toString(36).substring(7)
             };
 
             if (options.body && !(options.body instanceof FormData)) {
@@ -136,146 +136,123 @@ const api = {
             const requestOptions = {
                 ...options,
                 mode: 'cors',
-                credentials: 'include',
                 headers: {
                     ...defaultHeaders,
                     ...options.headers
                 }
             };
 
-            const url = `${API_BASE_URL}${endpoint}`;
+            // Формируем полный URL
+            const url = `${API_BASE_URL}${API_PATH}${endpoint}`;
             console.log('Отправка запроса к API:', {
                 url,
                 method: options.method || 'GET',
                 headers: requestOptions.headers
             });
 
-            try {
-                const response = await fetch(url, requestOptions);
-                console.log('Получен ответ:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: Object.fromEntries(response.headers.entries())
-                });
+            const response = await fetch(url, requestOptions);
+            console.log('Получен ответ:', {
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers.entries())
+            });
 
-                if (!response.ok) {
-                    let errorMessage;
-                    try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.detail || errorData.message || `Ошибка сервера: ${response.status}`;
-                    } catch {
-                        errorMessage = `Ошибка сервера: ${response.status} ${response.statusText}`;
-                    }
-                    throw new Error(errorMessage);
+            if (!response.ok) {
+                let errorMessage;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorData.message || `Ошибка сервера: ${response.status}`;
+                } catch {
+                    errorMessage = `Ошибка сервера: ${response.status} ${response.statusText}`;
                 }
-
-                const data = await response.json();
-                console.log('Получены данные:', data);
-                return data;
-            } catch (fetchError) {
-                if (fetchError.message.includes('CORS')) {
-                    console.error('CORS Error:', {
-                        error: fetchError,
-                        url,
-                        headers: requestOptions.headers
-                    });
-                    throw new Error('Ошибка доступа к серверу. Пожалуйста, попробуйте позже.');
-                }
-                throw fetchError;
+                throw new Error(errorMessage);
             }
+
+            const data = await response.json();
+            console.log('Получены данные:', data);
+            return data;
         } catch (error) {
             console.error('API Error:', error);
-            
-            let errorMessage = 'Произошла ошибка при выполнении запроса';
-            if (error.message.includes('Failed to fetch')) {
-                errorMessage = 'Не удалось подключиться к серверу. Проверьте подключение к интернету.';
-            } else if (error.message.includes('NetworkError')) {
-                errorMessage = 'Ошибка сети. Проверьте подключение к интернету.';
-            } else if (error.message.includes('CORS')) {
-                errorMessage = 'Ошибка доступа к серверу. Пожалуйста, попробуйте позже.';
-            } else {
-                errorMessage = error.message;
-            }
-            
-            addNotification(errorMessage, true);
+            addNotification(error.message, true);
             throw error;
         }
     },
 
-    // Получение telegram_id
-    getTelegramId() {
+    // Получение session_id из WebApp
+    async getSessionId() {
         if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
             throw new Error('Данные пользователя недоступны');
         }
-        return tg.initDataUnsafe.user.id.toString();
-    },
-
-    // Инициализация пользователя
-    async initUser(telegramId) {
-        return this.request(`/init/${telegramId}`);
+        
+        const telegramId = tg.initDataUnsafe.user.id;
+        const response = await this.request(`/init/${telegramId}`);
+        return response.session_id;
     },
 
     // Методы для работы с профилем
     async createProfile(data) {
-        return this.request(`/users/${data.telegram_id}`, {
+        return this.request(`/users/${data.session_id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
     },
 
-    async getProfile(telegramId) {
-        return this.request(`/users/${telegramId}`);
+    async getProfile(sessionId) {
+        return this.request(`/users/${sessionId}`);
     },
 
-    async getNextProfile(currentUserId) {
-        return this.request(`/profiles/next?current_user_id=${currentUserId}`);
+    async getNextProfile(currentSessionId) {
+        return this.request(`/profiles/next?current_user_id=${currentSessionId}`);
     },
 
-    async likeProfile(userId, currentUserId) {
-        return this.request(`/profiles/${userId}/like?current_user_id=${currentUserId}`, {
+    async likeProfile(userId, currentSessionId) {
+        return this.request(`/profiles/${userId}/like?current_user_id=${currentSessionId}`, {
             method: 'POST'
         });
     },
 
-    async dislikeProfile(userId, currentUserId) {
-        return this.request(`/profiles/${userId}/dislike?current_user_id=${currentUserId}`, {
+    async dislikeProfile(userId, currentSessionId) {
+        return this.request(`/profiles/${userId}/dislike?current_user_id=${currentSessionId}`, {
             method: 'POST'
         });
     },
 
-    async getMatches(userId) {
-        return this.request(`/matches/${userId}`);
+    async getMatches(sessionId) {
+        return this.request(`/matches/${sessionId}`);
     },
 
-    async getLikes(userId) {
-        return this.request(`/likes/${userId}`);
+    async getLikes(sessionId) {
+        return this.request(`/likes/${sessionId}`);
     },
 
-    async uploadPhoto(file, telegramId) {
+    async uploadPhoto(sessionId, file) {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            
-            console.log('Начало загрузки фото:', {
-                filename: file.name,
-                size: file.size,
-                type: file.type
-            });
-            
-            const response = await this.request(`/users/${telegramId}/photo`, {
+
+            const response = await fetch(`${API_BASE_URL}/photos/upload/${sessionId}`, {
                 method: 'POST',
-                body: formData
+                body: formData,
+                headers: {
+                    ...defaultHeaders,
+                    'Content-Type': undefined
+                }
             });
-            
-            console.log('Фото успешно загружено:', response);
-            return response;
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to upload photo');
+            }
+
+            const data = await response.json();
+            return data.photo_url;
         } catch (error) {
-            console.error('Ошибка при загрузке фото:', error);
+            console.error('Error uploading photo:', error);
+            showNotification('error', 'Failed to upload photo: ' + error.message);
             throw error;
         }
     },
 
-    // Безопасный показ уведомлений через очередь
     showNotification(message, isError = false) {
         addNotification(message, isError);
     }
