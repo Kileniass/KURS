@@ -255,6 +255,35 @@ const api = {
 
     showNotification(message, isError = false) {
         addNotification(message, isError);
+    },
+
+    async initUser(telegramId) {
+        try {
+            const response = await this.request(`/init/${telegramId}`, 'GET');
+            
+            if (response.is_new) {
+                // Если пользователь новый, перенаправляем на страницу создания профиля
+                window.location.href = 'profile-change.html';
+            } else {
+                // Если пользователь существует, сохраняем его данные
+                this.user = {
+                    id: response.user_id,
+                    session_id: response.session_id,
+                    name: response.name,
+                    age: response.age,
+                    car: response.car,
+                    region: response.region,
+                    about: response.about,
+                    photo_url: response.photo_url
+                };
+                
+                // Перенаправляем на главную страницу
+                window.location.href = 'index.html';
+            }
+        } catch (error) {
+            console.error('Error initializing user:', error);
+            this.showNotification('Ошибка инициализации пользователя');
+        }
     }
 };
 

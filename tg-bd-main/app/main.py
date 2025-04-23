@@ -186,11 +186,17 @@ async def init_user(telegram_id: int, db: Session = Depends(get_db)):
         user = db.query(User).filter(User.telegram_id == telegram_id).first()
         
         if not user:
-            # Создаем нового пользователя
+            # Создаем нового пользователя с минимальными данными
             user = User(
                 telegram_id=telegram_id,
                 session_id=CURRENT_SESSION_ID,
-                is_new=True
+                is_new=True,
+                name=None,
+                age=None,
+                car=None,
+                region=None,
+                about=None,
+                photo_url=None
             )
             db.add(user)
         else:
@@ -204,7 +210,13 @@ async def init_user(telegram_id: int, db: Session = Depends(get_db)):
         return {
             "user_id": user.id,
             "session_id": user.session_id,
-            "is_new": user.is_new
+            "is_new": user.is_new,
+            "name": user.name,
+            "age": user.age,
+            "car": user.car,
+            "region": user.region,
+            "about": user.about,
+            "photo_url": user.photo_url
         }
     except Exception as e:
         db.rollback()
