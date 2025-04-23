@@ -21,18 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const profileAbout = document.getElementById('profileAbout');
             const profileCar = document.getElementById('profileCar');
             
-            // Устанавливаем фото профиля с обработкой ошибок
-            if (profilePhoto) {
-                if (profile.photo_url) {
-                    profilePhoto.src = profile.photo_url;
-                    profilePhoto.onerror = () => {
-                        profilePhoto.classList.add('error');
-                    };
-                } else {
-                    profilePhoto.classList.add('error');
-                }
-            }
-            
+            if (profilePhoto) profilePhoto.src = profile.photo_url || 'image/placeholder_image.jpg';
             if (profileName) profileName.textContent = `${profile.name}, ${profile.age}`;
             if (profileAbout) profileAbout.textContent = profile.about || 'Нет описания';
             if (profileCar) profileCar.textContent = profile.car || 'Не указано';
@@ -45,12 +34,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const profileName = document.getElementById('profileName');
             const profileAbout = document.getElementById('profileAbout');
             const profileCar = document.getElementById('profileCar');
-            const profilePhoto = document.getElementById('profilePhoto');
             
             if (profileName) profileName.textContent = 'Ошибка загрузки';
             if (profileAbout) profileAbout.textContent = 'Не удалось загрузить данные профиля';
             if (profileCar) profileCar.textContent = 'Ошибка';
-            if (profilePhoto) profilePhoto.classList.add('error');
             
             // Перенаправляем на страницу создания профиля, если профиль не найден
             if (error.message.includes('404')) {

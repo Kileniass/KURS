@@ -18,17 +18,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         imgElement.onerror = () => {
             console.warn(`Ошибка загрузки изображения: ${src}, используем запасное`);
-            imgElement.classList.add('error');
-            imgElement.src = '';
+            imgElement.src = fallbackSrc;
+            imgElement.onerror = null; // Убираем обработчик чтобы избежать рекурсии
         };
-        
-        if (src) {
-            imgElement.classList.remove('error');
-            imgElement.src = src;
-        } else {
-            imgElement.classList.add('error');
-            imgElement.src = '';
-        }
+        imgElement.src = src || fallbackSrc;
     }
 
     // Инициализация пользователя

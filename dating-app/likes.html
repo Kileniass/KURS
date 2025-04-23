@@ -9,38 +9,52 @@
     <link rel="stylesheet" href="css/style_likes.css">
 </head>
 <body>
-    <div class="app">
-        <header class="header">
-            <h1 class="header__title">Лайки</h1>
-        </header>
-
-        <main class="main">
-            <div class="empty-state">
-                <div class="empty-state__icon">
-                    <img src="image/icon_like.svg" alt="Нет лайков" class="empty-state__heart">
+    <header class="header">
+        <div class="header__container">
+            <div class="logo-title__container">
+                <img src="image/racingconnect_logo.png" alt="Логотип RacingConnect" class="img__logo">
+                <div class="header__logo">
+                    <a href="./">RacingConnect</a>
                 </div>
-                <h2 class="empty-state__title">Здесь пока никого нет.</h2>
-                <p class="empty-state__text">Вас пока никто не лайкнул, не огорчайся, это временно</p>
-                <a href="./" class="empty-state__button">Смотреть анкеты</a>
             </div>
-        </main>
+        </div>
+    </header>
 
-        <footer class="footer">
-            <nav class="footer__nav">
-                <a href="./" class="footer__link">
-                    <img src="image/icon_profiles.png" alt="Профили" class="footer__icon">
-                </a>
-                <a href="likes.html" class="footer__link active">
-                    <img src="image/icon_likes.png" alt="Лайки" class="footer__icon">
-                </a>
-                <a href="profile.html" class="footer__link">
-                    <img src="image/icon_profile.png" alt="Профиль" class="footer__icon">
-                </a>
-            </nav>
-        </footer>
-    </div>
+    <section class="hero">
+        <div class="container hero__container">
+            <div class="hero__content">
+                <div class="hero__icon">
+                    <img src="image/icon_like.png" alt="Иконка сердца" class="img__heart">
+                </div>
+                <div class="hero__message">
+                    <p class="hero__text">Здесь пока никого нет.</p>
+                    <p class="hero__text">Вас пока никто не лайкнул, не огорчайся, это временно.</p>
+                </div>
+                <div class="hero__button">
+                    <a href="./" target="_self" class="btn__view-profiles">
+                        <span class="btn__text">Смотреть анкеты</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer__nav">
+            <a href="./" target="_self">
+                <img src="image/icon_profiles.png" alt="Профили">
+            </a>
+            <a href="likes.html" target="_self">
+                <img src="image/icon_likes.png" alt="Лайки">
+            </a>
+            <a href="profile.html" target="_self">
+                <img src="image/icon_profile.png" alt="Профиль">
+            </a>
+        </div>
+    </footer>
 
     <script src="js/telegram-webapp.js"></script>
     <script src="js/init.js"></script>
+    <script src="js/likes.js"></script>
 </body>
 </html> 
