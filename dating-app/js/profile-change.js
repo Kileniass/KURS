@@ -7,24 +7,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUser = null;
     let tgApp = null;
 
-    // Функция для показа уведомлений
+    // Функция для показа уведомлений через API
     function showNotification(message, isError = false) {
-        if (isError) {
-            console.error('Ошибка:', message);
-        }
-        if (window.tgApp && window.tgApp.tg) {
-            window.tgApp.tg.showAlert(message);
+        if (window.tgApp && window.tgApp.api) {
+            window.tgApp.api.showNotification(message, isError);
         } else {
+            if (isError) console.error('Ошибка:', message);
             alert(message);
         }
     }
 
-    // Функция ожидания инициализации tgApp
-    function waitForTgApp() {
-        return new Promise((resolve) => {
+    // Функция ожидания инициализации tgApp с таймаутом
+    function waitForTgApp(timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            const startTime = Date.now();
+            
             const check = () => {
                 if (window.tgApp) {
                     resolve(window.tgApp);
+                } else if (Date.now() - startTime >= timeout) {
+                    reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));
                 } else {
                     setTimeout(check, 100);
                 }
@@ -39,6 +41,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Ждем инициализации tgApp
             tgApp = await waitForTgApp();
             console.log('tgApp инициализирован');
+
+            if (!tgApp.tg) {
+                throw new Error('Telegram WebApp не инициализирован корректно');
+            }
 
             // Получаем telegram_id
             const telegramId = tgApp.api.getTelegramId();
@@ -58,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Устанавливаем фото профиля
                 if (currentUser.photo_url) {
-                    photoPreview.src = `${window.tgApp.api.STATIC_BASE_URL}${currentUser.photo_url}`;
+                    tgApp.api.setImageWithFallback(photoPreview, currentUser.photo_url);
                 }
             }
         } catch (error) {
@@ -127,7 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             // Если есть новое фото, загружаем его
-            let photoUrl = null;
+            let photoUrl = currentUser?.photo_url;
             if (photoFile) {
                 try {
                     const uploadResult = await tgApp.api.uploadPhoto(photoFile, telegramId);
@@ -137,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } catch (error) {
                     console.error('Ошибка при загрузке фото:', error);
-                    showNotification('Ошибка при загрузке фото. Профиль будет сохранен без фото.', true);
+                    showNotification('Ошибка при загрузке фото. Профиль будет сохранен без нового фото.', true);
                 }
             }
             

@@ -61,6 +61,31 @@ function initTelegramWebApp() {
 let notificationQueue = [];
 let isShowingNotification = false;
 
+// Функция для показа уведомлений с очередью
+async function showNextNotification() {
+    if (isShowingNotification || notificationQueue.length === 0) return;
+    
+    isShowingNotification = true;
+    const { message, isError } = notificationQueue.shift();
+    
+    try {
+        if (isError) {
+            console.error('Ошибка:', message);
+        }
+        if (tg && tg.showAlert) {
+            await tg.showAlert(message);
+        } else {
+            alert(message);
+        }
+    } catch (error) {
+        console.error('Ошибка при показе уведомления:', error);
+    } finally {
+        isShowingNotification = false;
+        // Показываем следующее уведомление, если оно есть
+        setTimeout(() => showNextNotification(), 100);
+    }
+}
+
 // Утилиты для работы с API
 const api = {
     async request(endpoint, options = {}) {
@@ -70,13 +95,14 @@ const api = {
                 'Origin': 'https://kileniass.github.io'
             };
 
-            // Если отправляем JSON, добавляем заголовок Content-Type
+            // Если отправляем JSON и это не FormData, добавляем заголовок Content-Type
             if (options.body && !(options.body instanceof FormData)) {
                 defaultHeaders['Content-Type'] = 'application/json';
             }
 
             const requestOptions = {
                 ...options,
+                credentials: 'include', // Добавляем поддержку cookies
                 mode: 'cors',
                 headers: {
                     ...defaultHeaders,
@@ -94,13 +120,14 @@ const api = {
             const response = await fetch(url, requestOptions);
             
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Ошибка API:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    error: errorText
-                });
-                throw new Error(errorText || `Ошибка сервера: ${response.status}`);
+                let errorMessage;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorData.message || `Ошибка сервера: ${response.status}`;
+                } catch {
+                    errorMessage = `Ошибка сервера: ${response.status}`;
+                }
+                throw new Error(errorMessage);
             }
             
             const data = await response.json();
@@ -108,7 +135,12 @@ const api = {
             return data;
         } catch (error) {
             console.error('API Error:', error);
-            this.showNotification(error.message || 'Произошла ошибка при выполнении запроса', true);
+            // Добавляем уведомление в очередь
+            notificationQueue.push({
+                message: error.message || 'Произошла ошибка при выполнении запроса',
+                isError: true
+            });
+            showNextNotification();
             throw error;
         }
     },
@@ -186,16 +218,10 @@ const api = {
         }
     },
 
-    // Безопасный показ уведомлений
-    async showNotification(message, isError = false) {
-        if (isError) {
-            console.error('Ошибка:', message);
-        }
-        if (tg && tg.showAlert) {
-            await tg.showAlert(message);
-        } else {
-            alert(message);
-        }
+    // Безопасный показ уведомлений через очередь
+    showNotification(message, isError = false) {
+        notificationQueue.push({ message, isError });
+        showNextNotification();
     }
 };
 
@@ -204,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tg = initTelegramWebApp();
     window.tgApp = {
         tg,
-        api
+        api,
+        STATIC_BASE_URL
     };
 }); 
