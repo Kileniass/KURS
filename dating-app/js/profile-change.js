@@ -6,110 +6,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     let photoFile = null;
     let currentUser = null;
 
-    // Базовый URL API
-    const API_BASE_URL = 'https://tg-bd.onrender.com';
-
     // Функция для показа уведомлений
     function showNotification(message, isError = false) {
-        try {
-            if (!window.Telegram || !window.Telegram.WebApp) {
-                console.error('Telegram WebApp не доступен');
-                alert(message);
-                return;
-            }
-
-            if (isError) {
-                console.error(message);
-                window.Telegram.WebApp.showAlert(message);
-            } else {
-                console.log(message);
-                window.Telegram.WebApp.showAlert(message);
-            }
-        } catch (error) {
-            console.error('Ошибка при показе уведомления:', error);
-            alert(message);
-        }
-    }
-
-    // Функция для выполнения API запросов
-    async function apiRequest(endpoint, method = 'GET', data = null) {
-        try {
-            const options = {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            };
-
-            if (data) {
-                options.body = JSON.stringify(data);
-            }
-
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Ошибка при выполнении запроса');
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('API request error:', error);
-            throw error;
-        }
-    }
-
-    // Функция для загрузки фото
-    async function uploadPhoto(file, telegramId) {
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await fetch(`${API_BASE_URL}/upload_photo/${telegramId}`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                throw new Error('Ошибка при загрузке фото');
-            }
-
-            const data = await response.json();
-            return data.photo_url;
-        } catch (error) {
-            console.error('Ошибка при загрузке фото:', error);
-            throw error;
-        }
+        tgApp.api.showNotification(message, isError);
     }
 
     // Инициализация пользователя
     async function initUser() {
         try {
-            if (!window.Telegram || !window.Telegram.WebApp) {
-                throw new Error('Telegram WebApp не инициализирован');
-            }
-
-            const tg = window.Telegram.WebApp;
+            // Получаем telegram_id
+            const telegramId = tgApp.api.getTelegramId();
+            console.log('Получен telegram_id:', telegramId);
             
-            const telegramId = tg.initDataUnsafe?.user?.id;
-            if (!telegramId) {
-                throw new Error('Не удалось получить ID пользователя');
-            }
-            
-            console.log('Получен telegram_id:', telegramId.toString());
-            
-            // Получаем данные пользователя
-            try {
-                currentUser = await apiRequest(`/user/${telegramId}`);
-            } catch (error) {
-                if (error.message.includes('404')) {
-                    // Если пользователь не найден, создаем нового
-                    currentUser = await apiRequest('/user', 'POST', { telegram_id: telegramId.toString() });
-                } else {
-                    throw error;
-                }
-            }
-
+            // Инициализируем пользователя на сервере
+            currentUser = await tgApp.api.initUser(telegramId);
             console.log('Пользователь инициализирован:', currentUser);
             
             // Заполняем форму данными пользователя
@@ -167,12 +77,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             saveButton.disabled = true;
             
-            const tg = window.Telegram?.WebApp;
-            if (!tg || !tg.initDataUnsafe?.user?.id) {
-                throw new Error('Не удалось получить данные пользователя');
-            }
-            
-            const telegramId = tg.initDataUnsafe.user.id.toString();
+            // Получаем telegram_id
+            const telegramId = tgApp.api.getTelegramId();
             
             // Проверяем обязательные поля
             const name = document.getElementById('name').value.trim();
@@ -202,8 +108,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Если есть новое фото, загружаем его
             if (photoFile) {
                 try {
-                    const photoUrl = await uploadPhoto(photoFile, telegramId);
-                    profileData.photo_url = photoUrl;
+                    const uploadResult = await tgApp.api.uploadPhoto(photoFile, telegramId);
+                    if (uploadResult && uploadResult.photo_url) {
+                        profileData.photo_url = uploadResult.photo_url;
+                    }
                 } catch (error) {
                     console.error('Ошибка при загрузке фото:', error);
                     showNotification('Ошибка при загрузке фото. Профиль будет сохранен без фото.', true);
@@ -211,11 +119,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             // Обновляем профиль пользователя
-            const updatedUser = await apiRequest(`/user/${telegramId}`, 'PUT', profileData);
+            const updatedUser = await tgApp.api.createProfile(profileData);
             console.log('Профиль обновлен:', updatedUser);
             
             showNotification('Профиль успешно сохранен');
             
+            // Добавляем небольшую задержку перед редиректом
             setTimeout(() => {
                 window.location.href = 'profile.html';
             }, 1500);

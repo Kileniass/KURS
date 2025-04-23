@@ -1,28 +1,44 @@
 // Инициализация Telegram WebApp
-let tg;
-try {
-    if (!window.Telegram) {
-        console.error('Telegram WebApp не найден');
-        throw new Error('Telegram WebApp не найден');
+let tg = null;
+
+function initTelegramWebApp() {
+    try {
+        if (!window.Telegram || !window.Telegram.WebApp) {
+            throw new Error('Telegram WebApp не найден');
+        }
+
+        tg = window.Telegram.WebApp;
+
+        // Проверяем наличие initData и валидируем его
+        if (!tg.initData || !tg.initDataUnsafe || !tg.initDataUnsafe.user) {
+            console.warn('initData или данные пользователя не найдены, пробуем повторную инициализацию...');
+            
+            // Пробуем получить данные через небольшую задержку
+            setTimeout(() => {
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    console.log('Данные пользователя получены после задержки');
+                    window.tgApp.tg = tg;
+                } else {
+                    console.error('Не удалось получить данные пользователя');
+                }
+            }, 1000);
+        }
+
+        console.log('Telegram WebApp инициализирован:', {
+            version: tg.version,
+            platform: tg.platform,
+            initDataUnsafe: tg.initDataUnsafe
+        });
+
+        // Активируем WebApp
+        tg.ready();
+        tg.expand();
+
+        return tg;
+    } catch (error) {
+        console.error('Ошибка при инициализации Telegram WebApp:', error);
+        return null;
     }
-    tg = window.Telegram.WebApp;
-
-    // Проверяем наличие initData
-    if (!tg.initData) {
-        console.error('initData не найден');
-        throw new Error('initData не найден');
-    }
-
-    console.log('Telegram WebApp успешно инициализирован:', {
-        version: tg.version,
-        platform: tg.platform
-    });
-
-    // Активируем WebApp
-    tg.ready();
-    tg.expand();
-} catch (error) {
-    console.error('Ошибка при инициализации Telegram WebApp:', error);
 }
 
 // Конфигурация API
@@ -41,7 +57,6 @@ const api = {
             const requestOptions = {
                 ...options,
                 mode: 'cors',
-                credentials: 'include',
                 headers: {
                     ...defaultHeaders,
                     ...options.headers
@@ -71,16 +86,32 @@ const api = {
             return data;
         } catch (error) {
             console.error('API Error:', error);
-            // Используем более безопасный способ показа ошибок
-            if (tg && tg.showAlert) {
-                try {
-                    tg.showAlert('Произошла ошибка при выполнении запроса: ' + error.message);
-                } catch (popupError) {
-                    console.error('Ошибка при показе уведомления:', popupError);
-                }
-            }
+            this.showNotification(error.message || 'Произошла ошибка при выполнении запроса', true);
             throw error;
         }
+    },
+
+    // Безопасный показ уведомлений
+    showNotification(message, isError = false) {
+        if (!tg) {
+            alert(message);
+            return;
+        }
+
+        try {
+            tg.showAlert(message);
+        } catch (error) {
+            console.error('Ошибка при показе уведомления:', error);
+            alert(message);
+        }
+    },
+
+    // Получение telegram_id с проверками
+    getTelegramId() {
+        if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
+            throw new Error('Данные пользователя недоступны');
+        }
+        return tg.initDataUnsafe.user.id.toString();
     },
 
     // Инициализация пользователя
@@ -154,6 +185,9 @@ const api = {
         });
     }
 };
+
+// Инициализируем Telegram WebApp
+tg = initTelegramWebApp();
 
 // Экспорт для использования в других файлах
 window.tgApp = {
