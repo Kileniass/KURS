@@ -37,15 +37,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Профиль получен:', profile);
 
         // Заполняем форму данными профиля
-        document.getElementById('name').value = profile.name || '';
-        document.getElementById('age').value = profile.age || '';
-        document.getElementById('car').value = profile.car || '';
-        document.getElementById('region').value = profile.region || '';
-        document.getElementById('about').value = profile.about || '';
+        const nameInput = document.getElementById('name');
+        const ageInput = document.getElementById('age');
+        const carInput = document.getElementById('car');
+        const regionInput = document.getElementById('region');
+        const aboutInput = document.getElementById('about');
+        const profilePhoto = document.getElementById('profilePhoto');
+
+        if (nameInput) nameInput.value = profile.name || '';
+        if (ageInput) ageInput.value = profile.age || '';
+        if (carInput) carInput.value = profile.car || '';
+        if (regionInput) regionInput.value = profile.region || '';
+        if (aboutInput) aboutInput.value = profile.about || '';
 
         // Устанавливаем фото профиля
-        if (profile.photo_url) {
-            tgApp.api.setImageWithFallback('profilePhoto', profile.photo_url);
+        if (profilePhoto && profile.photo_url) {
+            tgApp.api.setImageWithFallback(profilePhoto, profile.photo_url);
         }
 
         // Обработчик загрузки фото
@@ -55,9 +62,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const file = e.target.files[0];
                 if (file) {
                     try {
-                        const photoUrl = await tgApp.api.uploadPhoto(telegramId, file);
-                        tgApp.api.setImageWithFallback('profilePhoto', photoUrl);
-                        tgApp.api.showNotification('Фото успешно загружено');
+                        const result = await tgApp.api.uploadPhoto(telegramId, file);
+                        if (result && result.photo_url && profilePhoto) {
+                            tgApp.api.setImageWithFallback(profilePhoto, result.photo_url);
+                            tgApp.api.showNotification('Фото успешно загружено');
+                        }
                     } catch (error) {
                         console.error('Ошибка при загрузке фото:', error);
                         tgApp.api.showNotification(error.message, true);
@@ -73,16 +82,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 e.preventDefault();
 
                 const formData = {
-                    name: document.getElementById('name').value,
-                    age: document.getElementById('age').value,
-                    car: document.getElementById('car').value,
-                    region: document.getElementById('region').value,
-                    about: document.getElementById('about').value
+                    name: nameInput ? nameInput.value : '',
+                    age: ageInput ? parseInt(ageInput.value) || null : null,
+                    car: carInput ? carInput.value : '',
+                    region: regionInput ? regionInput.value : '',
+                    about: aboutInput ? aboutInput.value : ''
                 };
 
                 try {
-                    await tgApp.api.createProfile(telegramId, formData);
+                    await tgApp.api.updateProfile(telegramId, formData);
                     tgApp.api.showNotification('Профиль успешно обновлен');
+                    // Возвращаемся на страницу профиля
+                    window.location.href = 'profile.html';
                 } catch (error) {
                     console.error('Ошибка при обновлении профиля:', error);
                     tgApp.api.showNotification(error.message, true);
