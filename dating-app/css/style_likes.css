@@ -152,8 +152,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     background-color: #2E2E2E;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .header__title {
@@ -167,17 +167,16 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
     background-color: #2E2E2E;
 }
 
 .empty-state {
     text-align: center;
-    padding: 20px;
+    padding: 0 20px;
 }
 
 .empty-state__icon {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .empty-state__heart {
@@ -212,6 +211,11 @@ body {
     border-radius: 100px;
     font-size: 15px;
     font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.empty-state__button:hover {
+    background-color: rgba(255, 255, 255, 0.9);
 }
 
 .footer {
