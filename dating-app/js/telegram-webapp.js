@@ -126,8 +126,7 @@ const api = {
             const defaultHeaders = {
                 'Accept': 'application/json',
                 'X-Client-Version': '1.0.0',
-                'X-Request-ID': Math.random().toString(36).substring(7),
-                'Origin': 'https://kileniass.github.io'
+                'X-Request-ID': Math.random().toString(36).substring(7)
             };
 
             if (options.body && !(options.body instanceof FormData)) {
@@ -235,8 +234,7 @@ const api = {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'Accept': 'application/json',
-                    'Origin': 'https://kileniass.github.io'
+                    'Accept': 'application/json'
                 }
             });
 
