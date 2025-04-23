@@ -55,14 +55,13 @@ const api = {
             const defaultHeaders = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Origin': 'https://kileniass.github.io'
             };
 
             // Настройки запроса
             const requestOptions = {
                 ...options,
                 mode: 'cors',
-                credentials: 'include',
                 headers: {
                     ...defaultHeaders,
                     ...options.headers
@@ -159,11 +158,11 @@ const api = {
     async initUser(telegramId) {
         try {
             // Пробуем инициализировать пользователя
-            return await this.request(`/api/init/${telegramId}`);
+            return await this.request(`/init/${telegramId}`);
         } catch (error) {
             // Если произошла ошибка, пробуем получить профиль
             if (error.message.includes('404') || error.message.includes('Failed to fetch')) {
-                return await this.request(`/api/users/${telegramId}`);
+                return await this.request(`/users/${telegramId}`);
             }
             throw error;
         }
@@ -171,34 +170,34 @@ const api = {
 
     // Методы для работы с профилем
     async createProfile(data) {
-        return this.request(`/api/users/${data.telegram_id}`, {
+        return this.request(`/users/${data.telegram_id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
     },
 
     async getProfile(telegramId) {
-        return this.request(`/api/users/${telegramId}`);
+        return this.request(`/users/${telegramId}`);
     },
 
     async getNextProfile(currentUserId) {
-        return this.request(`/api/profiles/next?current_user_id=${currentUserId}`);
+        return this.request(`/profiles/next?current_user_id=${currentUserId}`);
     },
 
     async likeProfile(userId, currentUserId) {
-        return this.request(`/api/profiles/${userId}/like?current_user_id=${currentUserId}`, {
+        return this.request(`/profiles/${userId}/like?current_user_id=${currentUserId}`, {
             method: 'POST'
         });
     },
 
     async dislikeProfile(userId, currentUserId) {
-        return this.request(`/api/profiles/${userId}/dislike?current_user_id=${currentUserId}`, {
+        return this.request(`/profiles/${userId}/dislike?current_user_id=${currentUserId}`, {
             method: 'POST'
         });
     },
 
     async getMatches(userId) {
-        return this.request(`/api/matches/${userId}`);
+        return this.request(`/matches/${userId}`);
     },
 
     async getLikes(userId) {
@@ -215,7 +214,7 @@ const api = {
         const formData = new FormData();
         formData.append('file', file);
 
-        return this.request(`/api/users/${telegramId}/photo`, {
+        return this.request(`/users/${telegramId}/photo`, {
             method: 'POST',
             body: formData
         });
