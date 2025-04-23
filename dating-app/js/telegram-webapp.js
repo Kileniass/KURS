@@ -50,8 +50,7 @@ const api = {
         try {
             const defaultHeaders = {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Origin': window.location.origin
+                'Accept': 'application/json'
             };
 
             // Настройки запроса
@@ -69,12 +68,24 @@ const api = {
                 delete requestOptions.headers['Content-Type'];
             }
 
+            // Добавляем обработку no-cors для GET запросов
+            if (options.method === undefined || options.method === 'GET') {
+                requestOptions.mode = 'no-cors';
+                delete requestOptions.headers['Content-Type'];
+                delete requestOptions.headers['Accept'];
+            }
+
             console.log('Отправка запроса к API:', {
                 url: `${API_BASE_URL}${endpoint}`,
                 options: requestOptions
             });
             
             const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
+            
+            // Для no-cors режима возвращаем пустой объект, так как ответ будет opaque
+            if (requestOptions.mode === 'no-cors') {
+                return {};
+            }
             
             if (!response.ok) {
                 if (response.status === 404) {
@@ -128,24 +139,27 @@ const api = {
     // Инициализация пользователя
     async initUser(telegramId) {
         try {
-            const user = await this.request(`/user/${telegramId}`);
-            if (!user) {
-                // Если пользователь не найден, создаем нового
+            // Сначала пробуем получить пользователя
+            const user = await this.request(`/user/${telegramId}`, {
+                method: 'GET',
+                mode: 'no-cors'
+            });
+
+            // Если не получилось получить пользователя, создаем нового
+            if (!user || Object.keys(user).length === 0) {
                 return await this.request('/user', {
                     method: 'POST',
                     body: JSON.stringify({ telegram_id: telegramId })
                 });
             }
+
             return user;
         } catch (error) {
-            if (error.message.includes('404')) {
-                // Если пользователь не найден, создаем нового
-                return await this.request('/user', {
-                    method: 'POST',
-                    body: JSON.stringify({ telegram_id: telegramId })
-                });
-            }
-            throw error;
+            // Если произошла ошибка, пробуем создать нового пользователя
+            return await this.request('/user', {
+                method: 'POST',
+                body: JSON.stringify({ telegram_id: telegramId })
+            });
         }
     },
 

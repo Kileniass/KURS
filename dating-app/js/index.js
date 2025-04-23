@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUserId = null;
 
     // Базовые пути для изображений
-    const IMAGES_BASE_PATH = '/KURS/dating-app/image';
+    const IMAGES_BASE_PATH = 'https://kileniass.github.io/KURS/dating-app/image';
 
     // Инициализация пользователя
     async function initUser() {
