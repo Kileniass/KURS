@@ -68,12 +68,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Обновляем иконки кнопок
             setImageWithFallback(
                 document.querySelector('#likeBtn img'),
-                `${IMAGES_BASE_PATH}/icon_like.png`,
+                `${IMAGES_BASE_PATH}/icon_like.svg`,
                 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgMjEuMzVsLTEuNDUtMS4zMkM1LjQgMTUuMzYgMiAxMi4yOCAyIDguNSAyIDUuNDIgNC40MiAzIDcuNSAzYzEuNzQgMCAzLjQxLjgxIDQuNSAyLjA5QzEzLjA5IDMuODEgMTQuNzYgMyAxNi41IDMgMTkuNTggMyAyMiA1LjQyIDIyIDguNWMwIDMuNzgtMy40IDYuODYtOC41NSAxMS41M0wxMiAyMS4zNXoiLz48L3N2Zz4='
             );
             setImageWithFallback(
                 document.querySelector('#dislikeBtn img'),
-                `${IMAGES_BASE_PATH}/icon_dislike.png`,
+                `${IMAGES_BASE_PATH}/icon_dislike.svg`,
                 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgMjEuMzVsLTEuNDUtMS4zMkM1LjQgMTUuMzYgMiAxMi4yOCAyIDguNSAyIDUuNDIgNC40MiAzIDcuNSAzYzEuNzQgMCAzLjQxLjgxIDQuNSAyLjA5QzEzLjA5IDMuODEgMTQuNzYgMyAxNi41IDMgMTkuNTggMyAyMiA1LjQyIDIyIDguNWMwIDMuNzgtMy40IDYuODYtOC41NSAxMS41M0wxMiAyMS4zNXoiLz48L3N2Zz4='
             );
             
