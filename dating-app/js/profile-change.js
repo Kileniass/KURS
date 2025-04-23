@@ -48,13 +48,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         const telegramId = tgApp.api.getTelegramId();
         console.log('Получен telegram_id:', telegramId);
 
-        try {
-            // Получаем профиль пользователя
-            const profile = await tgApp.api.getProfile(telegramId);
-            console.log('Профиль получен:', profile);
+        let profile = null;
 
+        try {
+            // Пытаемся получить существующий профиль
+            try {
+                profile = await tgApp.api.getProfile(telegramId);
+                console.log('Существующий профиль получен:', profile);
+            } catch (error) {
+                if (error.message.includes('404') || error.message.includes('не найден')) {
+                    // Если профиль не найден, создаем новый
+                    console.log('Профиль не найден, создаем новый...');
+                    const defaultProfile = {
+                        telegram_id: telegramId,
+                        name: '',
+                        age: null,
+                        car: '',
+                        region: '',
+                        about: ''
+                    };
+                    
+                    try {
+                        // Инициализируем пользователя
+                        await tgApp.api.initUser(telegramId);
+                        // Создаем профиль
+                        profile = await tgApp.api.updateProfile(telegramId, defaultProfile);
+                        console.log('Создан новый профиль:', profile);
+                    } catch (createError) {
+                        console.error('Ошибка при создании профиля:', createError);
+                        throw createError;
+                    }
+                } else {
+                    throw error;
+                }
+            }
+
+            // Заполняем форму данными профиля
             if (profile) {
-                // Заполняем форму данными профиля
                 nameInput.value = profile.name || '';
                 ageInput.value = profile.age || '';
                 carInput.value = profile.car || '';
@@ -67,8 +97,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         } catch (error) {
-            console.error('Ошибка при получении профиля:', error);
-            tgApp.api.showNotification('Ошибка при загрузке профиля: ' + error.message, true);
+            console.error('Ошибка при работе с профилем:', error);
+            tgApp.api.showNotification('Ошибка при работе с профилем: ' + error.message, true);
         }
 
         // Обработчик загрузки фото
