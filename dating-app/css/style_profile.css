@@ -151,121 +151,90 @@
 
 /* Профиль */
 .profile {
-  width: 320px;
-  height: 640px; /* Установленная высота */
-  background-color: #333;
-  color: white;
+    width: 100%;
+    min-height: calc(100vh - 100px);
+    background-color: #2e2e2e;
 }
 
 .profile__container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px;
-  height: 100%; /* Занимает всю высоту родительского контейнера */
+    padding: 0;
 }
 
 .profile__image {
     position: relative;
     width: 100%;
-    margin-bottom: 20px;
+    height: 400px;
+    margin-bottom: 0;
 }
 
-.profile__edit-wrapper {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 2;
+.img__profile {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile__content {
+    padding: 15px;
+    background-color: #2e2e2e;
+}
+
+.profile__name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.profile__title {
+    font-size: 20px;
+    font-weight: 500;
+    color: #fff !important;
+}
+
+.profile__subtitle, .profile__car-title {
+    font-size: 16px;
+    color: #fff;
+    margin-bottom: 10px;
 }
 
 .btn__edit {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 15px;
+    right: 15px;
     display: inline-block;
-    padding: 6px 12px;
-    background-color: white;
-    color: black;
-    border-radius: 20px;
+    padding: 8px 20px;
+    background-color: white !important;
+    color: black !important;
+    border-radius: 50px;
     font-size: 14px;
+    font-weight: 500;
     text-decoration: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     z-index: 2;
 }
 
-.btn__edit:hover {
-    background-color: #f0f0f0;
-}
-
-.profile__image-container {
-  width: 290px; /* Ширина контейнера */
-  height: 150px; /* Высота контейнера */
-  overflow: hidden; /* Обрезает избыточное изображение */
-  margin-bottom: 15px; /* Отступ между фото и остальным контентом */
-  border-radius: 5px; /* Закругление углов контейнера */
-}
-
-.img__profile {
-  width: 100%; /* Занимает всю ширину контейнера */
-  height: 100%; /* Занимает всю высоту контейнера */
-  object-fit: fill; /* Растягивает изображение на всю область контейнера */
-  border-radius: 5px; /* Закругление углов изображения */
-}
-
-.img__profile.error {
-  background-image: url('../image/hero-image.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-.profile__info {
-  display: flex;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.profile__name {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
-  width: 100%;
-}
-
-.profile__title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.profile__quote {
-  text-align: center;
-}
-
-.profile__text {
-  font-size: 14px;
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* Футер */
 .footer {
-  width: 320px;
-  height: 50px;
-  background-color: #333;
-  color: white;
-  display: flex;
-  justify-content: center; /* Выравнивание по центру */
-  align-items: center;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    max-width: 320px;
+    background-color: #2e2e2e;
+    border-top: 1px solid #3d3d3d;
 }
 
 .footer__nav {
-  display: flex;
-  gap: 30px; /* Расстояние между иконками */
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 0;
 }
 
 .footer__nav img {
-  width: 25px;
-  height: 25px;
+    width: 24px;
+    height: 24px;
+    opacity: 0.7;
+}
+
+.footer__nav a.active img {
+    opacity: 1;
 }
