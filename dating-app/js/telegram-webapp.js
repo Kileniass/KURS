@@ -50,10 +50,11 @@ const api = {
         try {
             const defaultHeaders = {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Origin': window.location.origin
             };
 
-            // Добавляем CORS заголовки
+            // Настройки запроса
             const requestOptions = {
                 ...options,
                 mode: 'cors',
@@ -63,6 +64,11 @@ const api = {
                 }
             };
 
+            // Для FormData не устанавливаем Content-Type
+            if (options.body instanceof FormData) {
+                delete requestOptions.headers['Content-Type'];
+            }
+
             console.log('Отправка запроса к API:', {
                 url: `${API_BASE_URL}${endpoint}`,
                 options: requestOptions
@@ -71,6 +77,9 @@ const api = {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
             
             if (!response.ok) {
+                if (response.status === 404) {
+                    return null;
+                }
                 const errorData = await response.json().catch(() => ({}));
                 console.error('Ошибка API:', {
                     status: response.status,
@@ -99,9 +108,11 @@ const api = {
         }
 
         try {
+            // Используем только showAlert, так как showPopup может быть недоступен
             tg.showAlert(message);
         } catch (error) {
             console.error('Ошибка при показе уведомления:', error);
+            // В случае ошибки показываем обычный alert
             alert(message);
         }
     },
@@ -117,7 +128,15 @@ const api = {
     // Инициализация пользователя
     async initUser(telegramId) {
         try {
-            return await this.request(`/user/${telegramId}`);
+            const user = await this.request(`/user/${telegramId}`);
+            if (!user) {
+                // Если пользователь не найден, создаем нового
+                return await this.request('/user', {
+                    method: 'POST',
+                    body: JSON.stringify({ telegram_id: telegramId })
+                });
+            }
+            return user;
         } catch (error) {
             if (error.message.includes('404')) {
                 // Если пользователь не найден, создаем нового

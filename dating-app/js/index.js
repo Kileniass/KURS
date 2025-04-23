@@ -4,11 +4,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentProfile = null;
     let currentUserId = null;
 
+    // Базовые пути для изображений
+    const IMAGES_BASE_PATH = '/KURS/dating-app/image';
+
     // Инициализация пользователя
     async function initUser() {
         try {
             // Получаем telegram_id из Telegram WebApp
-            const telegramId = tgApp.tg.initDataUnsafe.user.id.toString();
+            const telegramId = tgApp.api.getTelegramId();
             
             // Инициализируем пользователя на сервере
             const user = await tgApp.api.initUser(telegramId);
@@ -19,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadNextProfile();
         } catch (error) {
             console.error('Error initializing user:', error);
-            tgApp.tg.showAlert('Ошибка при инициализации пользователя');
+            tgApp.api.showNotification('Ошибка при инициализации пользователя');
         }
     }
 
@@ -29,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const profile = await tgApp.api.getNextProfile(currentUserId);
             
             if (!profile) {
-                document.getElementById('profilePhoto').src = 'image/placeholder_image.jpg';
+                document.getElementById('profilePhoto').src = `${IMAGES_BASE_PATH}/placeholder_image.jpg`;
                 document.getElementById('profileName').textContent = 'Нет доступных профилей';
                 document.getElementById('profileAbout').textContent = 'Попробуйте позже';
                 document.getElementById('profileCar').textContent = '';
@@ -39,14 +42,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentProfile = profile;
             
             // Заполняем данные профиля
-            document.getElementById('profilePhoto').src = currentProfile.photo_url || 'image/placeholder_image.jpg';
+            document.getElementById('profilePhoto').src = currentProfile.photo_url || `${IMAGES_BASE_PATH}/placeholder_image.jpg`;
             document.getElementById('profileName').textContent = `${currentProfile.name}, ${currentProfile.age}`;
             document.getElementById('profileAbout').textContent = currentProfile.about || 'Нет описания';
             document.getElementById('profileCar').textContent = currentProfile.car || 'Не указано';
             
+            // Обновляем иконки кнопок
+            document.querySelector('#likeBtn img').src = `${IMAGES_BASE_PATH}/icon_like.png`;
+            document.querySelector('#dislikeBtn img').src = `${IMAGES_BASE_PATH}/icon_dislike.png`;
+            
         } catch (error) {
             console.error('Error loading profile:', error);
-            tgApp.tg.showAlert('Ошибка при загрузке профиля');
+            tgApp.api.showNotification('Ошибка при загрузке профиля');
         }
     }
 
@@ -58,15 +65,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await tgApp.api.likeProfile(currentProfile.telegram_id, currentUserId);
             
             if (result.is_match) {
-                tgApp.tg.showAlert('У вас новое совпадение!');
+                tgApp.api.showNotification('У вас новое совпадение!');
             } else {
-                tgApp.tg.showAlert('Профиль понравился!');
+                tgApp.api.showNotification('Профиль понравился!');
             }
             
             await loadNextProfile();
         } catch (error) {
             console.error('Error liking profile:', error);
-            tgApp.tg.showAlert('Ошибка при отправке лайка');
+            tgApp.api.showNotification('Ошибка при отправке лайка');
         }
     });
 
@@ -79,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadNextProfile();
         } catch (error) {
             console.error('Error disliking profile:', error);
-            tgApp.tg.showAlert('Ошибка при отправке дизлайка');
+            tgApp.api.showNotification('Ошибка при отправке дизлайка');
         }
     });
 
