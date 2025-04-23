@@ -136,6 +136,7 @@ const api = {
             const requestOptions = {
                 ...options,
                 mode: 'cors',
+                credentials: 'include',
                 headers: {
                     ...defaultHeaders,
                     ...options.headers
@@ -233,9 +234,9 @@ const api = {
             const response = await fetch(`${API_BASE_URL}/photos/upload/${sessionId}`, {
                 method: 'POST',
                 body: formData,
+                credentials: 'include',
                 headers: {
-                    ...defaultHeaders,
-                    'Content-Type': undefined
+                    'Accept': 'application/json'
                 }
             });
 
@@ -248,7 +249,7 @@ const api = {
             return data.photo_url;
         } catch (error) {
             console.error('Error uploading photo:', error);
-            showNotification('error', 'Failed to upload photo: ' + error.message);
+            addNotification('Ошибка загрузки фотографии: ' + error.message, true);
             throw error;
         }
     },

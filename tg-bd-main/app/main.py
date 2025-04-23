@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from app.schemas import AboutUpdate, UserUpdate, UserCreate, User, LikeCreate, MatchRead, PhotoUpload
+from app.schemas import AboutUpdate, UserUpdate, UserCreate, User as UserSchema, LikeCreate, MatchRead, PhotoUpload
 import random
 import string
 
@@ -25,8 +25,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Определение констант
+CURRENT_SESSION_ID = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+UPLOAD_DIR = Path("uploads")
+ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"]
+
 # Создание таблиц в базе данных (если их ещё нет)
-models.Base.metadata.create_all(bind=engine)
+try:
+    models.Base.metadata.create_all(bind=engine)
+    logger.info("Database tables created successfully")
+except Exception as e:
+    logger.error(f"Error creating database tables: {str(e)}")
+    raise
 
 app = FastAPI(
     title="Telegram WebApp for Auto Enthusiasts",
@@ -83,9 +93,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 # Добавляем middleware для логирования
 app.add_middleware(RequestLoggingMiddleware)
 
-# Глобальная переменная для хранения текущей сессии
-CURRENT_SESSION_ID = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-
 @app.get("/")
 async def read_root(request: Request):
     logger.info(f"Root endpoint accessed from {request.client.host}")
@@ -115,12 +122,16 @@ async def options_route(request: Request, rest_of_path: str):
     response_description="Данные пользователя")
 async def init_user(telegram_id: int, db: Session = Depends(get_db)):
     try:
+        logger.info(f"Starting user initialization for telegram_id: {telegram_id}")
+        
         # Проверяем, существует ли пользователь с таким telegram_id
-        user = db.query(User).filter(User.telegram_id == telegram_id).first()
+        logger.info("Querying database for existing user")
+        user = db.query(models.User).filter(models.User.telegram_id == telegram_id).first()
         
         if not user:
+            logger.info("User not found, creating new user")
             # Создаем нового пользователя с минимальными данными
-            user = User(
+            user = models.User(
                 telegram_id=telegram_id,
                 session_id=CURRENT_SESSION_ID,
                 is_new=True,
@@ -131,16 +142,20 @@ async def init_user(telegram_id: int, db: Session = Depends(get_db)):
                 about=None,
                 photo_url=None
             )
+            logger.info("Adding new user to database")
             db.add(user)
         else:
+            logger.info(f"Existing user found: {user.id}")
             # Обновляем session_id для существующего пользователя
             user.session_id = CURRENT_SESSION_ID
             user.is_new = False
         
+        logger.info("Committing changes to database")
         db.commit()
+        logger.info("Refreshing user object")
         db.refresh(user)
         
-        return {
+        response = {
             "user_id": user.id,
             "session_id": user.session_id,
             "is_new": user.is_new,
@@ -151,9 +166,12 @@ async def init_user(telegram_id: int, db: Session = Depends(get_db)):
             "about": user.about,
             "photo_url": user.photo_url
         }
+        logger.info(f"Returning response: {response}")
+        return response
     except Exception as e:
+        logger.error(f"Error in init_user: {str(e)}", exc_info=True)
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @app.put("/api/users/{session_id}",
     summary="Обновление профиля пользователя",
@@ -258,8 +276,6 @@ def update_about(data: AboutUpdate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"]
-
 @app.post("/photos/upload/{session_id}")
 async def upload_photo(session_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
@@ -288,7 +304,7 @@ async def upload_photo(session_id: str, file: UploadFile = File(...), db: Sessio
             raise HTTPException(status_code=500, detail="Failed to save uploaded file")
 
         # Update user's photo URL in database
-        user = db.query(User).filter(User.session_id == session_id).first()
+        user = db.query(models.User).filter(models.User.session_id == session_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
