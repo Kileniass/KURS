@@ -221,19 +221,20 @@
   border-radius: 15px;
   border: none;
   cursor: pointer;
-  background-size: 20px 20px; /* Размер иконки */
-  background-repeat: no-repeat;
-  background-position: center;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn__dislike {
   background-color: rgba(128, 128, 128, 0.5);
-  background-image: url("/image/icon_dislike.png"); /* Путь к изображению dislike */
 }
 
 .btn__like {
   background-color: rgba(178, 34, 34, 0.8);
-  background-image: url("/image/icon_like.png"); /* Путь к изображению like */
 }
 
 /* Расстояние между кнопками */
