@@ -24,60 +24,88 @@ function setImageWithFallback(imgElement, photoUrl) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const editButton = document.getElementById('editProfile');
-    
-    // Загрузка данных профиля
+    let tgApp = null;
+
+    // Функция ожидания инициализации tgApp
+    async function waitForTgApp(timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            const startTime = Date.now();
+            
+            const check = () => {
+                if (window.tgApp) {
+                    resolve(window.tgApp);
+                } else if (Date.now() - startTime >= timeout) {
+                    reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));
+                } else {
+                    setTimeout(check, 100);
+                }
+            };
+            check();
+        });
+    }
+
+    // Загрузка профиля пользователя
     async function loadProfile() {
         try {
-            // Получаем telegram_id из Telegram WebApp
-            const telegramId = tg.tg.initDataUnsafe.user.id.toString();
+            // Ждем инициализации tgApp
+            tgApp = await waitForTgApp();
+            console.log('tgApp инициализирован');
+
+            if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
+                throw new Error('Telegram WebApp не инициализирован корректно');
+            }
+
+            const telegramId = tgApp.tg.initDataUnsafe.user.id;
+            console.log('Получен telegram_id:', telegramId);
             
-            // Загружаем данные профиля
-            const profile = await tg.api.getProfile(telegramId);
-            console.log('Profile loaded:', profile);
+            // Получаем session_id
+            const sessionId = await tgApp.api.getSessionId();
+            console.log('Получен session_id:', sessionId);
+            
+            // Получаем профиль пользователя
+            const profile = await tgApp.api.getProfile(sessionId);
+            console.log('Профиль пользователя получен:', profile);
             
             if (!profile) {
                 throw new Error('Профиль не найден');
             }
-            
+
             // Заполняем данные профиля
             const profilePhoto = document.getElementById('profilePhoto');
+            if (profilePhoto) {
+                tgApp.api.setImageWithFallback(profilePhoto, profile.photo_url);
+            }
+            
             const profileName = document.getElementById('profileName');
+            if (profileName) {
+                profileName.textContent = `${profile.name}, ${profile.age}`;
+            }
+            
             const profileAbout = document.getElementById('profileAbout');
+            if (profileAbout) {
+                profileAbout.textContent = profile.about || 'Нет описания';
+            }
+            
             const profileCar = document.getElementById('profileCar');
+            if (profileCar) {
+                profileCar.textContent = profile.car || 'Не указано';
+            }
             
-            if (profilePhoto) setImageWithFallback(profilePhoto, profile.photo_url);
-            if (profileName) profileName.textContent = `${profile.name}, ${profile.age}`;
-            if (profileAbout) profileAbout.textContent = profile.about || 'Нет описания';
-            if (profileCar) profileCar.textContent = profile.car || 'Не указано';
-            
+            const profileRegion = document.getElementById('profileRegion');
+            if (profileRegion) {
+                profileRegion.textContent = profile.region || 'Не указан';
+            }
+
         } catch (error) {
-            console.error('Error loading profile:', error);
-            tg.tg.showAlert('Ошибка при загрузке профиля');
-            
-            // Показываем сообщение об ошибке
-            const profileName = document.getElementById('profileName');
-            const profileAbout = document.getElementById('profileAbout');
-            const profileCar = document.getElementById('profileCar');
-            
-            if (profileName) profileName.textContent = 'Ошибка загрузки';
-            if (profileAbout) profileAbout.textContent = 'Не удалось загрузить данные профиля';
-            if (profileCar) profileCar.textContent = 'Ошибка';
-            
-            // Перенаправляем на страницу создания профиля, если профиль не найден
-            if (error.message.includes('404')) {
-                window.location.href = 'profile-change.html';
+            console.error('Ошибка при загрузке профиля:', error);
+            if (tgApp && tgApp.api) {
+                tgApp.api.showNotification('Ошибка при загрузке профиля: ' + error.message, true);
+            } else {
+                alert('Ошибка при загрузке профиля: ' + error.message);
             }
         }
     }
-    
-    // Обработчик кнопки редактирования
-    if (editButton) {
-        editButton.addEventListener('click', () => {
-            window.location.href = 'profile-change.html';
-        });
-    }
-    
+
     // Загружаем профиль при загрузке страницы
     await loadProfile();
 }); 

@@ -26,76 +26,81 @@ function setImageWithFallback(imgElement, photoUrl) {
 
 // Функция инициализации пользователя
 async function initializeUser() {
-    let tg;
-    try {
-        tg = window.Telegram.WebApp;
-        if (!tg) {
-            throw new Error('Telegram WebApp не инициализирован');
-        }
-        console.log('Начало инициализации пользователя');
-        
-        // Получаем telegram_id из Telegram WebApp
-        if (!tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
-            throw new Error('Не удалось получить ID пользователя из Telegram WebApp');
-        }
-        
-        const telegramId = tg.initDataUnsafe.user.id.toString();
-        console.log('Получен telegram_id:', telegramId);
-        
+    let tgApp = null;
+
+    // Функция ожидания инициализации tgApp
+    async function waitForTgApp(timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            const startTime = Date.now();
+            
+            const check = () => {
+                if (window.tgApp) {
+                    resolve(window.tgApp);
+                } else if (Date.now() - startTime >= timeout) {
+                    reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));
+                } else {
+                    setTimeout(check, 100);
+                }
+            };
+            check();
+        });
+    }
+
+    // Инициализация пользователя
+    async function initUser() {
         try {
-            // Пытаемся получить профиль пользователя
-            const user = await tgApp.api.getProfile(telegramId);
-            console.log('Пользователь найден:', user);
+            // Ждем инициализации tgApp
+            tgApp = await waitForTgApp();
+            console.log('tgApp инициализирован');
+
+            if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
+                throw new Error('Telegram WebApp не инициализирован корректно');
+            }
+
+            const telegramId = tgApp.tg.initDataUnsafe.user.id;
+            console.log('Получен telegram_id:', telegramId);
             
-            // Проверяем, заполнен ли профиль
-            if (!user || !user.name) {
-                console.log('Профиль не заполнен, перенаправление на страницу заполнения профиля');
+            // Инициализируем пользователя на сервере
+            const user = await tgApp.api.initUser(telegramId);
+            console.log('User initialized:', user);
+            
+            if (!user || !user.user_id) {
+                throw new Error('Не удалось получить данные пользователя');
+            }
+
+            // Проверяем, является ли пользователь новым
+            if (user.is_new) {
+                // Если пользователь новый, перенаправляем на страницу создания профиля
                 window.location.href = 'profile-change.html';
                 return;
             }
-            
+
+            // Если пользователь существует, проверяем наличие профиля
+            if (!user.name || !user.age || !user.car || !user.region) {
+                // Если профиль не заполнен, перенаправляем на страницу создания профиля
+                window.location.href = 'profile-change.html';
+                return;
+            }
+
+            // Если профиль заполнен, перенаправляем на главную страницу
+            window.location.href = 'index.html';
+
         } catch (error) {
-            if (error.message.includes('404')) {
-                // Если пользователь не найден, создаем новый профиль
-                console.log('Пользователь не найден, создаем новый профиль');
-                await tgApp.api.initUser(telegramId);
-                window.location.href = 'profile-change.html';
-                return;
+            console.error('Error initializing user:', error);
+            if (tgApp && tgApp.api) {
+                tgApp.api.showNotification('Ошибка при инициализации пользователя: ' + error.message, true);
+            } else {
+                alert('Ошибка при инициализации пользователя: ' + error.message);
             }
-            throw error;
-        }
-        
-        // Проверяем текущую страницу
-        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-        console.log('Текущая страница:', currentPage);
-        
-        if (currentPage === 'index.html') {
-            console.log('Проверка профиля на главной странице');
-            // Если мы на главной странице, проверяем профиль
-            const user = await tgApp.api.getProfile(telegramId);
-            if (!user || !user.name) {
-                console.log('Профиль не найден или не заполнен, перенаправление');
-                window.location.href = 'profile-change.html';
-                return;
-            }
-        }
-        
-    } catch (error) {
-        console.error('Ошибка при инициализации:', error);
-        if (tg) {
-            tg.showAlert('Ошибка при инициализации приложения: ' + error.message);
-        }
-        
-        // В случае ошибки перенаправляем на создание профиля
-        if (!window.location.pathname.includes('profile-change.html')) {
-            console.log('Перенаправление на страницу создания профиля из-за ошибки');
-            window.location.href = 'profile-change.html';
         }
     }
+
+    // Инициализируем пользователя при загрузке страницы
+    await initUser();
 }
 
 // Запускаем инициализацию при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('Страница загружена, начинаем инициализацию');
-    initializeUser();
+    await initializeUser();
 }); 

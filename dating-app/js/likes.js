@@ -58,9 +58,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const telegramId = tgApp.tg.initDataUnsafe.user.id;
+            console.log('Получен telegram_id:', telegramId);
+            
             const likes = await tgApp.api.getLikes(telegramId);
+            console.log('Получены лайки:', likes);
 
             const heroContainer = document.querySelector('.hero__container');
+            if (!heroContainer) {
+                throw new Error('Контейнер для лайков не найден');
+            }
             
             if (!likes || likes.length === 0) {
                 // Если лайков нет, показываем сообщение по умолчанию
@@ -94,6 +100,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
 
             const likesList = document.querySelector('.likes__list');
+            if (!likesList) {
+                throw new Error('Список лайков не найден');
+            }
 
             // Добавляем карточки пользователей
             likes.forEach(user => {
@@ -111,7 +120,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Устанавливаем изображение с запасным вариантом
                 const imgElement = card.querySelector('.like-card__image');
-                tgApp.api.setImageWithFallback(imgElement, user.photo_url);
+                if (imgElement) {
+                    tgApp.api.setImageWithFallback(imgElement, user.photo_url);
+                }
                 
                 likesList.appendChild(card);
             });
@@ -121,13 +132,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 button.addEventListener('click', async () => {
                     try {
                         const userId = button.dataset.userId;
+                        if (!userId) {
+                            throw new Error('ID пользователя не найден');
+                        }
+
                         await tgApp.api.likeProfile(userId, telegramId);
                         
                         // Показываем уведомление об успешном матче
                         tgApp.api.showNotification('Поздравляем! У вас взаимная симпатия!');
 
                         // Обновляем список лайков
-                        loadLikes();
+                        await loadLikes();
                     } catch (error) {
                         console.error('Error matching users:', error);
                         tgApp.api.showNotification('Ошибка при создании пары: ' + error.message, true);

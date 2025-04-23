@@ -40,9 +40,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Получаем telegram_id из Telegram WebApp
             const telegramId = tgApp.tg.initDataUnsafe.user.id;
+            console.log('Получен telegram_id:', telegramId);
             
             // Инициализируем пользователя на сервере
             const user = await tgApp.api.initUser(telegramId);
+            if (!user || !user.user_id) {
+                throw new Error('Не удалось получить данные пользователя');
+            }
+            
             currentUserId = user.user_id;
             console.log('User initialized:', user);
             
@@ -77,13 +82,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentProfile = profile;
             
             // Заполняем данные профиля
-            tgApp.api.setImageWithFallback(
-                document.getElementById('profilePhoto'),
-                currentProfile.photo_url
-            );
-            document.getElementById('profileName').textContent = `${currentProfile.name}, ${currentProfile.age}`;
-            document.getElementById('profileAbout').textContent = currentProfile.about || 'Нет описания';
-            document.getElementById('profileCar').textContent = currentProfile.car || 'Не указано';
+            const profilePhoto = document.getElementById('profilePhoto');
+            if (profilePhoto) {
+                tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
+            }
+            
+            const profileName = document.getElementById('profileName');
+            if (profileName) {
+                profileName.textContent = `${currentProfile.name}, ${currentProfile.age}`;
+            }
+            
+            const profileAbout = document.getElementById('profileAbout');
+            if (profileAbout) {
+                profileAbout.textContent = currentProfile.about || 'Нет описания';
+            }
+            
+            const profileCar = document.getElementById('profileCar');
+            if (profileCar) {
+                profileCar.textContent = currentProfile.car || 'Не указано';
+            }
             
             // Обновляем текст кнопок
             likeBtn.innerHTML = 'Лайк';
