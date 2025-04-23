@@ -72,17 +72,25 @@ async function showNextNotification() {
         if (isError) {
             console.error('Ошибка:', message);
         }
+        
+        // Добавляем задержку между уведомлениями
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         if (tg && tg.showAlert) {
-            await tg.showAlert(message);
+            try {
+                await tg.showAlert(message);
+            } catch (error) {
+                if (error.message !== 'WebAppPopupOpened') {
+                    console.error('Ошибка при показе уведомления:', error);
+                }
+            }
         } else {
             alert(message);
         }
-    } catch (error) {
-        console.error('Ошибка при показе уведомления:', error);
     } finally {
         isShowingNotification = false;
         // Показываем следующее уведомление, если оно есть
-        setTimeout(() => showNextNotification(), 100);
+        setTimeout(() => showNextNotification(), 500);
     }
 }
 
@@ -91,8 +99,7 @@ const api = {
     async request(endpoint, options = {}) {
         try {
             const defaultHeaders = {
-                'Accept': 'application/json',
-                'Origin': 'https://kileniass.github.io'
+                'Accept': 'application/json'
             };
 
             // Если отправляем JSON и это не FormData, добавляем заголовок Content-Type
@@ -102,7 +109,6 @@ const api = {
 
             const requestOptions = {
                 ...options,
-                credentials: 'include', // Добавляем поддержку cookies
                 mode: 'cors',
                 headers: {
                     ...defaultHeaders,
