@@ -4,18 +4,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentProfile = null;
     let currentUserId = null;
 
+    // Устанавливаем текст кнопок сразу
+    likeBtn.innerHTML = 'Лайк';
+    dislikeBtn.innerHTML = 'Дизлайк';
+
     // Базовые пути для изображений
-    const IMAGES_BASE_PATH = '/dating-app/image';
+    const IMAGES_BASE_PATH = 'image';
     const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
 
     // Функция для безопасной загрузки изображений
     function setImageWithFallback(imgElement, src, fallbackSrc = DEFAULT_PROFILE_IMAGE) {
+        if (!imgElement) return;
+        
         imgElement.onerror = () => {
             console.warn(`Ошибка загрузки изображения: ${src}, используем запасное`);
             imgElement.src = fallbackSrc;
             imgElement.onerror = null; // Убираем обработчик чтобы избежать рекурсии
         };
-        imgElement.src = src;
+        imgElement.src = src || fallbackSrc;
     }
 
     // Инициализация пользователя

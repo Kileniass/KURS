@@ -42,7 +42,7 @@ function initTelegramWebApp() {
 }
 
 // Конфигурация API
-const API_BASE_URL = 'https://tg-bd.onrender.com';
+const API_BASE_URL = 'https://tg-bd.onrender.com/api';
 
 // Очередь уведомлений
 let notificationQueue = [];
@@ -54,13 +54,15 @@ const api = {
         try {
             const defaultHeaders = {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Access-Control-Allow-Origin': '*'
             };
 
             // Настройки запроса
             const requestOptions = {
                 ...options,
                 mode: 'cors',
+                credentials: 'include',
                 headers: {
                     ...defaultHeaders,
                     ...options.headers
@@ -200,11 +202,11 @@ const api = {
     },
 
     async getLikes(userId) {
-        return this.request(`/likes/${userId}`);
+        return this.request(`/users/${userId}/likes`);
     },
 
     async matchUsers(userId1, userId2) {
-        return this.request(`/match/${userId1}/${userId2}`, {
+        return this.request(`/users/${userId1}/match/${userId2}`, {
             method: 'POST'
         });
     },
