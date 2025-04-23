@@ -72,12 +72,13 @@ const api = {
                 delete requestOptions.headers['Content-Type'];
             }
 
+            const url = `${API_BASE_URL}/api${endpoint}`;
             console.log('Отправка запроса к API:', {
-                url: `${API_BASE_URL}${endpoint}`,
+                url,
                 options: requestOptions
             });
             
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
+            const response = await fetch(url, requestOptions);
             
             if (!response.ok) {
                 if (response.status === 404) {
@@ -155,25 +156,12 @@ const api = {
     // Инициализация пользователя
     async initUser(telegramId) {
         try {
-            // Пробуем получить пользователя
-            const user = await this.request(`/user/${telegramId}`);
-            
-            if (!user) {
-                // Если пользователь не найден, создаем нового
-                return await this.request('/user', {
-                    method: 'POST',
-                    body: JSON.stringify({ telegram_id: telegramId })
-                });
-            }
-            
-            return user;
+            // Пробуем инициализировать пользователя
+            return await this.request(`/init/${telegramId}`);
         } catch (error) {
-            // Если произошла ошибка, пробуем создать нового пользователя
+            // Если произошла ошибка, пробуем получить профиль
             if (error.message.includes('404') || error.message.includes('Failed to fetch')) {
-                return await this.request('/user', {
-                    method: 'POST',
-                    body: JSON.stringify({ telegram_id: telegramId })
-                });
+                return await this.request(`/users/${telegramId}`);
             }
             throw error;
         }
@@ -181,28 +169,28 @@ const api = {
 
     // Методы для работы с профилем
     async createProfile(data) {
-        return this.request(`/user/${data.telegram_id}`, {
+        return this.request(`/users/${data.telegram_id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
         });
     },
 
     async getProfile(telegramId) {
-        return this.request(`/user/${telegramId}`);
+        return this.request(`/users/${telegramId}`);
     },
 
     async getNextProfile(currentUserId) {
-        return this.request(`/next_profile/${currentUserId}`);
+        return this.request(`/profiles/next?current_user_id=${currentUserId}`);
     },
 
     async likeProfile(userId, currentUserId) {
-        return this.request(`/like/${currentUserId}/${userId}`, {
+        return this.request(`/profiles/${userId}/like?current_user_id=${currentUserId}`, {
             method: 'POST'
         });
     },
 
     async dislikeProfile(userId, currentUserId) {
-        return this.request(`/dislike/${currentUserId}/${userId}`, {
+        return this.request(`/profiles/${userId}/dislike?current_user_id=${currentUserId}`, {
             method: 'POST'
         });
     },
@@ -225,11 +213,8 @@ const api = {
         const formData = new FormData();
         formData.append('file', file);
 
-        return this.request(`/upload_photo/${telegramId}`, {
+        return this.request(`/users/${telegramId}/photo`, {
             method: 'POST',
-            headers: {
-                // Не добавляем Content-Type, он будет установлен автоматически для FormData
-            },
             body: formData
         });
     }
