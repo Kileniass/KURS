@@ -3,67 +3,70 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dislikeBtn = document.getElementById('dislikeBtn');
     let currentProfile = null;
     let currentUserId = null;
+    let tgApp = null;
 
     // Устанавливаем текст кнопок сразу
     likeBtn.innerHTML = 'Лайк';
     dislikeBtn.innerHTML = 'Дизлайк';
 
-    // Инициализация Telegram WebApp
-    const tg = window.Telegram.WebApp;
-
-    // Базовый путь к изображениям
-    const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
-    const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
-
-    // Функция для установки изображения с запасным вариантом
-    function setImageWithFallback(imgElement, photoUrl) {
-        if (!photoUrl) {
-            imgElement.src = DEFAULT_PROFILE_IMAGE;
-            return;
-        }
-
-        // Проверяем, является ли URL абсолютным
-        if (photoUrl.startsWith('http')) {
-            imgElement.src = photoUrl;
-        } else {
-            // Если URL относительный, добавляем базовый путь
-            imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
-        }
-
-        // Обработка ошибок загрузки изображения
-        imgElement.onerror = () => {
-            imgElement.src = DEFAULT_PROFILE_IMAGE;
-        };
+    // Функция ожидания инициализации tgApp
+    async function waitForTgApp(timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            const startTime = Date.now();
+            
+            const check = () => {
+                if (window.tgApp) {
+                    resolve(window.tgApp);
+                } else if (Date.now() - startTime >= timeout) {
+                    reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));
+                } else {
+                    setTimeout(check, 100);
+                }
+            };
+            check();
+        });
     }
 
     // Инициализация пользователя
     async function initUser() {
         try {
+            // Ждем инициализации tgApp
+            tgApp = await waitForTgApp();
+            console.log('tgApp инициализирован');
+
+            if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
+                throw new Error('Telegram WebApp не инициализирован корректно');
+            }
+
             // Получаем telegram_id из Telegram WebApp
-            const telegramId = tg.api.getTelegramId();
+            const telegramId = tgApp.tg.initDataUnsafe.user.id;
             
             // Инициализируем пользователя на сервере
-            const user = await tg.api.initUser(telegramId);
-            currentUserId = telegramId;
+            const user = await tgApp.api.initUser(telegramId);
+            currentUserId = user.user_id;
             console.log('User initialized:', user);
             
             // Загружаем первый профиль
             await loadNextProfile();
         } catch (error) {
             console.error('Error initializing user:', error);
-            tg.api.showNotification('Ошибка при инициализации пользователя');
+            tgApp.api.showNotification('Ошибка при инициализации пользователя: ' + error.message, true);
         }
     }
 
     // Загрузка следующего профиля
     async function loadNextProfile() {
         try {
-            const profile = await tg.api.getNextProfile(currentUserId);
+            if (!currentUserId) {
+                throw new Error('User ID не найден');
+            }
+
+            const profile = await tgApp.api.getNextProfile(currentUserId);
             
             if (!profile) {
-                setImageWithFallback(
+                tgApp.api.setImageWithFallback(
                     document.getElementById('profilePhoto'),
-                    DEFAULT_PROFILE_IMAGE
+                    null
                 );
                 document.getElementById('profileName').textContent = 'Нет доступных профилей';
                 document.getElementById('profileAbout').textContent = 'Попробуйте позже';
@@ -74,9 +77,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentProfile = profile;
             
             // Заполняем данные профиля
-            setImageWithFallback(
+            tgApp.api.setImageWithFallback(
                 document.getElementById('profilePhoto'),
-                currentProfile.photo_url || DEFAULT_PROFILE_IMAGE
+                currentProfile.photo_url
             );
             document.getElementById('profileName').textContent = `${currentProfile.name}, ${currentProfile.age}`;
             document.getElementById('profileAbout').textContent = currentProfile.about || 'Нет описания';
@@ -88,40 +91,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             
         } catch (error) {
             console.error('Error loading profile:', error);
-            tg.api.showNotification('Ошибка при загрузке профиля');
+            tgApp.api.showNotification('Ошибка при загрузке профиля: ' + error.message, true);
         }
     }
 
     // Обработчик кнопки лайка
     likeBtn.addEventListener('click', async () => {
-        if (!currentProfile) return;
+        if (!currentProfile || !currentUserId) {
+            tgApp.api.showNotification('Профиль не загружен', true);
+            return;
+        }
         
         try {
-            const result = await tg.api.likeProfile(currentProfile.telegram_id, currentUserId);
+            const result = await tgApp.api.likeProfile(currentProfile.id, currentUserId);
             
-            if (result.is_match) {
-                tg.api.showNotification('У вас новое совпадение!');
+            if (result.match) {
+                tgApp.api.showNotification('У вас новое совпадение!');
             } else {
-                tg.api.showNotification('Профиль понравился!');
+                tgApp.api.showNotification('Профиль понравился!');
             }
             
             await loadNextProfile();
         } catch (error) {
             console.error('Error liking profile:', error);
-            tg.api.showNotification('Ошибка при отправке лайка');
+            tgApp.api.showNotification('Ошибка при отправке лайка: ' + error.message, true);
         }
     });
 
     // Обработчик кнопки дизлайка
     dislikeBtn.addEventListener('click', async () => {
-        if (!currentProfile) return;
+        if (!currentProfile || !currentUserId) {
+            tgApp.api.showNotification('Профиль не загружен', true);
+            return;
+        }
         
         try {
-            await tg.api.dislikeProfile(currentProfile.telegram_id, currentUserId);
+            await tgApp.api.dislikeProfile(currentProfile.id, currentUserId);
             await loadNextProfile();
         } catch (error) {
             console.error('Error disliking profile:', error);
-            tg.api.showNotification('Ошибка при отправке дизлайка');
+            tgApp.api.showNotification('Ошибка при отправке дизлайка: ' + error.message, true);
         }
     });
 

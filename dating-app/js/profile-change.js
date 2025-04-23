@@ -81,23 +81,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Validate file type
         if (!['image/jpeg', 'image/png'].includes(file.type)) {
-            showNotification('error', 'Please select a JPEG or PNG image');
+            showNotification('Пожалуйста, выберите изображение в формате JPEG или PNG', true);
             return;
         }
 
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
-            showNotification('error', 'Image size should not exceed 5MB');
+            showNotification('Размер изображения не должен превышать 5MB', true);
             return;
         }
 
         try {
+            if (!sessionId) {
+                throw new Error('Session ID не найден');
+            }
+
+            // Создаем временный URL для предпросмотра
+            const previewUrl = URL.createObjectURL(file);
+            photoPreview.src = previewUrl;
+
+            // Загружаем фото на сервер
             const photoUrl = await tgApp.api.uploadPhoto(sessionId, file);
-            document.getElementById('preview').src = photoUrl;
-            showNotification('success', 'Photo uploaded successfully');
+            console.log('Фото загружено:', photoUrl);
+
+            // Обновляем предпросмотр с URL с сервера
+            tgApp.api.setImageWithFallback(photoPreview, photoUrl);
+            showNotification('Фото успешно загружено');
         } catch (error) {
-            console.error('Error uploading photo:', error);
-            showNotification('error', 'Failed to upload photo');
+            console.error('Ошибка загрузки фото:', error);
+            showNotification('Ошибка загрузки фото: ' + error.message, true);
+            // В случае ошибки возвращаем предыдущее фото
+            if (currentUser?.photo_url) {
+                tgApp.api.setImageWithFallback(photoPreview, currentUser.photo_url);
+            }
         }
     });
 

@@ -71,6 +71,11 @@ function addNotification(message, isError = false) {
 const api = {
     // Функция для установки изображения с запасным вариантом
     setImageWithFallback(imgElement, photoUrl) {
+        if (!imgElement) {
+            console.error('Image element is null');
+            return;
+        }
+
         if (!photoUrl) {
             imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
             return;
@@ -81,12 +86,17 @@ const api = {
             imgElement.src = photoUrl;
         } else {
             // Если URL относительный, добавляем базовый путь
-            imgElement.src = `${STATIC_BASE_URL}${photoUrl}`;
+            // Проверяем, начинается ли путь с /uploads
+            if (photoUrl.startsWith('/uploads')) {
+                imgElement.src = `${STATIC_BASE_URL}${photoUrl}`;
+            } else {
+                imgElement.src = `${STATIC_BASE_URL}/uploads/${photoUrl}`;
+            }
         }
 
         // Обработка ошибок загрузки изображения
         imgElement.onerror = () => {
-            console.warn('Ошибка загрузки изображения:', photoUrl);
+            console.warn('Ошибка загрузки изображения:', imgElement.src);
             imgElement.src = `${STATIC_BASE_URL}/static/photos/hero-image.jpg`;
         };
     },
@@ -197,6 +207,10 @@ const api = {
 
     async uploadPhoto(sessionId, file) {
         try {
+            if (!sessionId) {
+                throw new Error('Session ID is required');
+            }
+
             const formData = new FormData();
             formData.append('file', file);
 
