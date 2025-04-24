@@ -87,20 +87,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Add event listeners for like/dislike buttons
         document.getElementById('likeButton')?.addEventListener('click', async () => {
             try {
-                const profileCard = document.querySelector('.profile-card');
-                if (!profileCard) {
-                    console.error('Profile card not found');
-                    return;
-                }
-                
-                const currentProfile = profileCard.dataset.profileId;
-                if (!currentProfile) {
-                    console.error('No profile ID found');
+                const likeButton = document.getElementById('likeButton');
+                if (!likeButton || !likeButton.dataset.profileId) {
+                    console.error('ID профиля не найден');
                     return;
                 }
 
-                console.log('Отправка лайка для профиля:', currentProfile);
-                const result = await tgApp.api.likeProfile(currentProfile);
+                const currentProfileId = likeButton.dataset.profileId;
+                console.log('Отправка лайка для профиля:', currentProfileId);
+                
+                const result = await tgApp.api.likeProfile(currentProfileId);
                 console.log('Результат лайка:', result);
                 
                 if (result.match) {
@@ -123,20 +119,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('dislikeButton')?.addEventListener('click', async () => {
             try {
-                const profileCard = document.querySelector('.profile-card');
-                if (!profileCard) {
-                    console.error('Profile card not found');
-                    return;
-                }
-                
-                const currentProfile = profileCard.dataset.profileId;
-                if (!currentProfile) {
-                    console.error('No profile ID found');
+                const dislikeButton = document.getElementById('dislikeButton');
+                if (!dislikeButton || !dislikeButton.dataset.profileId) {
+                    console.error('ID профиля не найден');
                     return;
                 }
 
-                console.log('Отправка дизлайка для профиля:', currentProfile);
-                await tgApp.api.dislikeProfile(currentProfile);
+                const currentProfileId = dislikeButton.dataset.profileId;
+                console.log('Отправка дизлайка для профиля:', currentProfileId);
+                
+                await tgApp.api.dislikeProfile(currentProfileId);
                 
                 const nextProfileResponse = await tgApp.api.getNextProfile();
                 console.log('Следующий профиль после дизлайка:', nextProfileResponse);
@@ -159,53 +151,98 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function displayProfile(profile) {
-    const profileCard = document.querySelector('.profile-card');
-    profileCard.dataset.profileId = profile.id;
+    if (!profile) {
+        console.error('Профиль не определен');
+        displayNoMoreProfiles();
+        return;
+    }
+
+    console.log('Отображение профиля:', profile);
+
+    // Обновляем фото профиля
+    const profilePhoto = document.getElementById('profilePhoto');
+    if (profilePhoto) {
+        if (profile.photo_url) {
+            profilePhoto.src = profile.photo_url.startsWith('http') 
+                ? profile.photo_url 
+                : `${STATIC_BASE_URL}${profile.photo_url}`;
+            profilePhoto.alt = `Фото ${profile.name}`;
+        } else {
+            profilePhoto.src = './image/placeholder_image.jpg';
+            profilePhoto.alt = 'Фото профиля отсутствует';
+        }
+    }
+
+    // Обновляем имя
+    const nameElement = document.getElementById('profileName');
+    if (nameElement) {
+        nameElement.textContent = profile.name || 'Без имени';
+    }
+
+    // Обновляем описание
+    const aboutElement = document.getElementById('profileAbout');
+    if (aboutElement) {
+        aboutElement.textContent = profile.about || 'Нет описания';
+        aboutElement.style.display = profile.about ? 'block' : 'none';
+    }
+
+    // Обновляем информацию об автомобиле
+    const carElement = document.getElementById('profileCar');
+    if (carElement) {
+        carElement.textContent = profile.car || 'Автомобиль не указан';
+        carElement.style.display = profile.car ? 'block' : 'none';
+    }
+
+    // Сохраняем ID профиля для кнопок лайка/дизлайка
+    const likeButton = document.getElementById('likeButton');
+    const dislikeButton = document.getElementById('dislikeButton');
     
-    document.getElementById('profileName').textContent = profile.name;
-    document.getElementById('profileAge').textContent = profile.age;
-    
-    if (profile.car) {
-        document.getElementById('profileCar').textContent = profile.car;
-        document.getElementById('carSection').style.display = 'block';
-    } else {
-        document.getElementById('carSection').style.display = 'none';
+    if (likeButton) {
+        likeButton.dataset.profileId = profile.id;
+        likeButton.disabled = false;
     }
     
-    if (profile.region) {
-        document.getElementById('profileRegion').textContent = profile.region;
-        document.getElementById('regionSection').style.display = 'block';
-    } else {
-        document.getElementById('regionSection').style.display = 'none';
-    }
-    
-    if (profile.about) {
-        document.getElementById('profileAbout').textContent = profile.about;
-        document.getElementById('aboutSection').style.display = 'block';
-    } else {
-        document.getElementById('aboutSection').style.display = 'none';
-    }
-    
-    const profileImage = document.getElementById('profileImage');
-    if (profile.photo_url) {
-        profileImage.src = profile.photo_url;
-        profileImage.alt = `${profile.name}'s photo`;
-    } else {
-        profileImage.src = 'images/default-profile.jpg';
-        profileImage.alt = 'Default profile photo';
+    if (dislikeButton) {
+        dislikeButton.dataset.profileId = profile.id;
+        dislikeButton.disabled = false;
     }
 }
 
 function displayNoMoreProfiles() {
-    const profileCard = document.querySelector('.profile-card');
-    profileCard.innerHTML = `
-        <div class="no-profiles">
-            <h2>No more profiles</h2>
-            <p>Check back later for new matches!</p>
-        </div>
-    `;
-    document.getElementById('likeButton').disabled = true;
-    document.getElementById('dislikeButton').disabled = true;
+    console.log('Отображение сообщения об отсутствии профилей');
+    
+    const profilePhoto = document.getElementById('profilePhoto');
+    if (profilePhoto) {
+        profilePhoto.src = './image/no_more_profiles.jpg';
+        profilePhoto.alt = 'Нет доступных профилей';
+    }
+
+    const nameElement = document.getElementById('profileName');
+    if (nameElement) {
+        nameElement.textContent = 'Профили закончились';
+    }
+
+    const aboutElement = document.getElementById('profileAbout');
+    if (aboutElement) {
+        aboutElement.textContent = 'Загляните позже, чтобы увидеть новые анкеты!';
+    }
+
+    const carElement = document.getElementById('profileCar');
+    if (carElement) {
+        carElement.style.display = 'none';
+    }
+
+    // Отключаем кнопки
+    const likeButton = document.getElementById('likeButton');
+    const dislikeButton = document.getElementById('dislikeButton');
+    
+    if (likeButton) {
+        likeButton.disabled = true;
+    }
+    
+    if (dislikeButton) {
+        dislikeButton.disabled = true;
+    }
 }
 
 function showMatchNotification() {
