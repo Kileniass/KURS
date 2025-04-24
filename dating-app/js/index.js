@@ -1,21 +1,24 @@
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Wait for tgApp initialization
-        async function waitForTgApp(timeout = 10000) {
+        async function waitForTgApp() {
             return new Promise((resolve, reject) => {
-                const startTime = Date.now();
+                let attempts = 0;
+                const maxAttempts = 20; // 10 секунд с интервалом 500мс
                 
-                const check = () => {
-                    if (window.tgApp) {
+                const checkTgApp = () => {
+                    attempts++;
+                    if (window.tgApp && window.tgApp.isInitialized) {
+                        console.log('Telegram WebApp инициализирован');
                         resolve(window.tgApp);
-                    } else if (Date.now() - startTime >= timeout) {
-                        reject(new Error('Timeout waiting for tgApp'));
+                    } else if (attempts >= maxAttempts) {
+                        reject(new Error('Timeout waiting for Telegram WebApp initialization'));
                     } else {
-                        setTimeout(check, 100);
+                        setTimeout(checkTgApp, 500);
                     }
                 };
                 
-                check();
+                checkTgApp();
             });
         }
 
@@ -28,10 +31,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('tgApp fully initialized');
 
         // Generate or retrieve device ID
-        let deviceId = localStorage.getItem('deviceId');
+        let deviceId = localStorage.getItem('device_id');
         if (!deviceId) {
             deviceId = crypto.randomUUID();
-            localStorage.setItem('deviceId', deviceId);
+            localStorage.setItem('device_id', deviceId);
         }
         console.log('Using device ID:', deviceId);
 

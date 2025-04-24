@@ -71,12 +71,10 @@ async function request(url, options = {}) {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Origin': 'https://kileniass.github.io',
-                'Access-Control-Allow-Origin': 'https://kileniass.github.io',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Accept, Origin'
+                'Origin': 'https://kileniass.github.io'
             },
-            credentials: 'include'
+            credentials: 'include',
+            mode: 'cors'
         };
 
         const response = await fetch(url, { ...defaultOptions, ...options });
@@ -114,7 +112,13 @@ class TelegramWebApp {
                     // Инициализируем пользователя
                     const response = await request(`${this.API_BASE_URL}/init`, {
                         method: 'POST',
-                        body: JSON.stringify({ device_id: deviceId })
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Origin': 'https://kileniass.github.io'
+                        },
+                        body: JSON.stringify({ device_id: deviceId }),
+                        credentials: 'include',
+                        mode: 'cors'
                     });
                     
                     return response;
