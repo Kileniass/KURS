@@ -132,6 +132,22 @@ class TelegramWebApp {
             init: async () => {
                 try {
                     await this.initPromise;
+                    
+                    // Проверяем, есть ли уже device_id
+                    if (this.device_id) {
+                        // Проверяем, существует ли пользователь с таким device_id
+                        try {
+                            const existingUser = await request(`${this.API_BASE_URL}/users/${this.device_id}`);
+                            if (existingUser) {
+                                return existingUser;
+                            }
+                        } catch (error) {
+                            console.log('Пользователь не найден, создаем нового');
+                            // Если пользователь не найден, продолжаем инициализацию
+                        }
+                    }
+                    
+                    // Создаем нового пользователя
                     const response = await request(`${this.API_BASE_URL}/init`, {
                         method: 'POST'
                     });
@@ -160,32 +176,6 @@ class TelegramWebApp {
                     if (error.message.includes('404')) {
                         return null;
                     }
-                    throw error;
-                }
-            },
-
-            initUser: async (deviceId) => {
-                try {
-                    await this.initPromise;
-                    // Сохраняем device_id
-                    this.device_id = deviceId;
-                    localStorage.setItem('device_id', deviceId);
-                    
-                    // Инициализируем пользователя
-                    const response = await request(`${this.API_BASE_URL}/init`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Origin': 'https://kileniass.github.io'
-                        },
-                        body: JSON.stringify({ device_id: deviceId }),
-                        credentials: 'include',
-                        mode: 'cors'
-                    });
-                    
-                    return response;
-                } catch (error) {
-                    console.error('Error in initUser:', error);
                     throw error;
                 }
             },

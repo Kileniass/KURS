@@ -23,46 +23,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Ждем инициализации tgApp
         tgApp = await waitForTgApp();
         console.log('tgApp инициализирован');
-
-        // Инициализируем пользователя
-        const user = await tgApp.api.init();
-        console.log('Пользователь инициализирован:', user);
         
-        // Получаем профиль пользователя
-        const profile = await tgApp.api.getProfile();
-        console.log('Профиль получен:', profile);
-        
-        // Заполняем данные профиля
-        if (profile) {
-            const userName = document.getElementById('userName');
-            const userAge = document.getElementById('userAge');
-            const userCar = document.getElementById('userCar');
-            const userRegion = document.getElementById('userRegion');
-            const userAbout = document.getElementById('userAbout');
-            const userPhoto = document.getElementById('userPhoto');
+        // Создаем список элементов страницы, при взаимодействии с которыми нужно инициализировать пользователя
+        const interactiveElements = [
+            document.getElementById('editProfileButton'),
+            document.getElementById('userPhoto'),
+            document.getElementById('backButton')
+        ].filter(Boolean);
 
-            if (userName) userName.textContent = profile.name || 'Не указано';
-            if (userAge) userAge.textContent = profile.age ? `${profile.age} лет` : 'Не указан';
-            if (userCar) userCar.textContent = profile.car || 'Не указан';
-            if (userRegion) userRegion.textContent = profile.region || 'Не указан';
-            if (userAbout) userAbout.textContent = profile.about || 'Нет описания';
+        // Флаг, указывающий, был ли уже инициализирован пользователь
+        let isUserInitialized = false;
+
+        // Функция для инициализации пользователя
+        async function initializeUser() {
+            if (isUserInitialized) return;
+            isUserInitialized = true;
             
-            if (userPhoto) {
-                tgApp.api.setImageWithFallback(userPhoto, profile.photo_url);
+            try {
+                // Инициализируем пользователя
+                const user = await tgApp.api.init();
+                console.log('Пользователь инициализирован:', user);
+                
+                // Получаем профиль пользователя
+                const profile = await tgApp.api.getProfile();
+                console.log('Профиль получен:', profile);
+                
+                // Заполняем данные профиля
+                if (profile) {
+                    const userName = document.getElementById('userName');
+                    const userAge = document.getElementById('userAge');
+                    const userCar = document.getElementById('userCar');
+                    const userRegion = document.getElementById('userRegion');
+                    const userAbout = document.getElementById('userAbout');
+                    const userPhoto = document.getElementById('userPhoto');
+
+                    if (userName) userName.textContent = profile.name || 'Не указано';
+                    if (userAge) userAge.textContent = profile.age ? `${profile.age} лет` : 'Не указан';
+                    if (userCar) userCar.textContent = profile.car || 'Не указан';
+                    if (userRegion) userRegion.textContent = profile.region || 'Не указан';
+                    if (userAbout) userAbout.textContent = profile.about || 'Нет описания';
+                    
+                    if (userPhoto) {
+                        tgApp.api.setImageWithFallback(userPhoto, profile.photo_url);
+                    }
+                }
+                
+                // Удаляем обработчики событий для инициализации, так как она уже выполнена
+                interactiveElements.forEach(element => {
+                    element.removeEventListener('click', initializeUser);
+                });
+            } catch (error) {
+                console.error('Ошибка при загрузке профиля:', error);
+                showError('Не удалось загрузить профиль');
             }
         }
+        
+        // Добавляем обработчики событий для всех интерактивных элементов
+        interactiveElements.forEach(element => {
+            element.addEventListener('click', initializeUser);
+        });
 
         // Обработчик для кнопки редактирования
         const editButton = document.getElementById('editProfileButton');
         if (editButton) {
-            editButton.addEventListener('click', () => {
-                window.location.href = '/profile-change.html';
+            editButton.addEventListener('click', async () => {
+                await initializeUser();
+                window.location.href = './profile-change.html';
             });
         }
 
     } catch (error) {
-        console.error('Ошибка при загрузке профиля:', error);
-        showError('Не удалось загрузить профиль');
+        console.error('Ошибка при инициализации страницы:', error);
+        showError('Не удалось инициализировать страницу');
     }
 });
 

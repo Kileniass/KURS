@@ -51,23 +51,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         tgApp = await waitForTgApp();
         console.log('tgApp инициализирован');
 
-        // Инициализируем пользователя
-        const user = await tgApp.api.init();
-        console.log('Пользователь инициализирован:', user);
+        // Создаем список элементов страницы, при взаимодействии с которыми нужно инициализировать пользователя
+        const interactiveElements = [
+            document.getElementById('backButton'),
+            document.querySelector('.matches-container')
+        ].filter(Boolean);
 
-        // Получаем список совпадений
-        const matches = await tgApp.api.getMatches();
-        console.log('Получены совпадения:', matches);
-        
-        if (matches && matches.length > 0) {
-            displayMatches(matches);
-        } else {
-            displayNoMatches();
+        // Флаг, указывающий, был ли уже инициализирован пользователь
+        let isUserInitialized = false;
+
+        // Функция для инициализации пользователя
+        async function initializeUser() {
+            if (isUserInitialized) return;
+            isUserInitialized = true;
+
+            try {
+                // Инициализируем пользователя
+                const user = await tgApp.api.init();
+                console.log('Пользователь инициализирован:', user);
+
+                // Получаем список совпадений
+                const matches = await tgApp.api.getMatches();
+                console.log('Получены совпадения:', matches);
+                
+                if (matches && matches.length > 0) {
+                    displayMatches(matches);
+                } else {
+                    displayNoMatches();
+                }
+
+                // Удаляем обработчики событий для инициализации, так как она уже выполнена
+                interactiveElements.forEach(element => {
+                    element.removeEventListener('click', initializeUser);
+                });
+            } catch (error) {
+                console.error('Error loading matches:', error);
+                showError('Не удалось загрузить список совпадений');
+            }
         }
 
+        // Добавляем обработчики событий для всех интерактивных элементов
+        interactiveElements.forEach(element => {
+            element.addEventListener('click', initializeUser);
+        });
+
     } catch (error) {
-        console.error('Error loading matches:', error);
-        showError('Не удалось загрузить список совпадений');
+        console.error('Error initializing page:', error);
+        showError('Не удалось инициализировать страницу');
     }
 });
 

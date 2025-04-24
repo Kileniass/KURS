@@ -29,55 +29,83 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tgApp = await waitForTgApp();
         console.log('Статус инициализации tgApp:', tgApp ? 'успешно' : 'не найден');
 
-        // Initialize user profile
-        try {
-            console.log('Начало инициализации пользователя...');
-            
-            // Инициализируем пользователя
-            const initResponse = await tgApp.api.init();
-            console.log('Ответ инициализации:', initResponse);
+        // Создаем список элементов страницы, при взаимодействии с которыми нужно инициализировать пользователя
+        const interactiveElements = [
+            document.getElementById('likeButton'),
+            document.getElementById('dislikeButton'),
+            document.getElementById('profileButton'),
+            document.getElementById('matchesButton'),
+            document.getElementById('profilePhoto')
+        ].filter(Boolean);
 
-            if (!initResponse || !initResponse.device_id) {
-                throw new Error('Не удалось получить device_id');
-            }
+        // Флаг, указывающий, был ли уже инициализирован пользователь
+        let isUserInitialized = false;
 
-            // Сохраняем device_id
-            localStorage.setItem('device_id', initResponse.device_id);
+        // Функция для инициализации пользователя
+        async function initializeUser() {
+            if (isUserInitialized) return;
+            isUserInitialized = true;
 
-            // Получаем профиль
-            const profile = await tgApp.api.getProfile();
-            console.log('Профиль пользователя:', profile);
+            try {
+                console.log('Начало инициализации пользователя...');
+                
+                // Инициализируем пользователя
+                const initResponse = await tgApp.api.init();
+                console.log('Ответ инициализации:', initResponse);
 
-            if (!profile) {
-                console.log('Профиль не найден, перенаправление на создание...');
-                const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-                window.location.href = baseUrl + 'profile-change.html';
+                if (!initResponse || !initResponse.device_id) {
+                    throw new Error('Не удалось получить device_id');
+                }
+
+                // Получаем профиль
+                const profile = await tgApp.api.getProfile();
+                console.log('Профиль пользователя:', profile);
+
+                if (!profile) {
+                    console.log('Профиль не найден, перенаправление на создание...');
+                    const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                    window.location.href = baseUrl + 'profile-change.html';
+                    return;
+                }
+
+                // Load next profile
+                const nextProfileResponse = await tgApp.api.getNextProfile();
+                console.log('Следующий профиль:', nextProfileResponse);
+                
+                if (nextProfileResponse && nextProfileResponse.profile) {
+                    displayProfile(nextProfileResponse.profile);
+                } else {
+                    displayNoMoreProfiles();
+                }
+
+                // Удаляем обработчики событий для инициализации, так как она уже выполнена
+                interactiveElements.forEach(element => {
+                    element.removeEventListener('click', initializeUser);
+                });
+                
+            } catch (error) {
+                console.error('Ошибка при инициализации:', error);
+                if (error.message.includes('404')) {
+                    console.log('Профиль не найден, перенаправление на создание...');
+                    const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                    window.location.href = baseUrl + 'profile-change.html';
+                } else {
+                    showError('Ошибка инициализации: ' + error.message);
+                }
                 return;
             }
-
-            // Load next profile
-            const nextProfileResponse = await tgApp.api.getNextProfile();
-            console.log('Следующий профиль:', nextProfileResponse);
-            
-            if (nextProfileResponse && nextProfileResponse.profile) {
-                displayProfile(nextProfileResponse.profile);
-            } else {
-                displayNoMoreProfiles();
-            }
-        } catch (error) {
-            console.error('Ошибка при инициализации:', error);
-            if (error.message.includes('404')) {
-                console.log('Профиль не найден, перенаправление на создание...');
-                const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-                window.location.href = baseUrl + 'profile-change.html';
-            } else {
-                showError('Ошибка инициализации: ' + error.message);
-            }
-            return;
         }
+
+        // Добавляем обработчики событий для всех интерактивных элементов
+        interactiveElements.forEach(element => {
+            element.addEventListener('click', initializeUser);
+        });
 
         // Add event listeners for like/dislike buttons
         document.getElementById('likeButton')?.addEventListener('click', async () => {
+            // Убедимся, что пользователь инициализирован
+            await initializeUser();
+            
             try {
                 const likeButton = document.getElementById('likeButton');
                 if (!likeButton || !likeButton.dataset.profileId) {
@@ -110,6 +138,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         document.getElementById('dislikeButton')?.addEventListener('click', async () => {
+            // Убедимся, что пользователь инициализирован
+            await initializeUser();
+            
             try {
                 const dislikeButton = document.getElementById('dislikeButton');
                 if (!dislikeButton || !dislikeButton.dataset.profileId) {
