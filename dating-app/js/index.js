@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
     let tgApp = null;
-    let currentUserId = null;
     let currentProfile = null;
 
     // Функция ожидания инициализации tgApp
@@ -26,50 +25,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         tgApp = await waitForTgApp();
         console.log('tgApp инициализирован');
 
-        if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
-            throw new Error('Telegram WebApp не инициализирован корректно');
-        }
-
-        // Получаем telegram_id
-        const telegramId = tgApp.api.getTelegramId();
-        console.log('Получен telegram_id:', telegramId);
+        // Инициализируем пользователя
+        const user = await tgApp.api.init();
+        console.log('Пользователь инициализирован:', user);
 
         // Получаем профиль пользователя
-        const user = await tgApp.api.getProfile(telegramId);
-        console.log('Профиль пользователя получен:', user);
+        const profile = await tgApp.api.getProfile();
+        console.log('Профиль пользователя получен:', profile);
 
-        if (!user) {
-            throw new Error('Не удалось получить профиль пользователя');
+        if (!profile) {
+            // Если профиль не существует, перенаправляем на страницу создания профиля
+            window.location.href = '/profile-change.html';
+            return;
         }
-
-        currentUserId = user.id;
-        console.log('Текущий ID пользователя:', currentUserId);
 
         // Загружаем следующий профиль
-        currentProfile = await tgApp.api.getNextProfile(telegramId);
-        console.log('Следующий профиль загружен:', currentProfile);
+        const nextProfile = await tgApp.api.getNextProfile();
+        console.log('Следующий профиль загружен:', nextProfile);
 
-        if (!currentProfile) {
-            throw new Error('Нет доступных профилей');
+        if (!nextProfile) {
+            displayNoProfiles();
+            return;
         }
 
-        // Обновляем UI
-        const profileName = document.getElementById('profileName');
-        const profileAge = document.getElementById('profileAge');
-        const profileCar = document.getElementById('profileCar');
-        const profileRegion = document.getElementById('profileRegion');
-        const profileAbout = document.getElementById('profileAbout');
-        const profilePhoto = document.getElementById('profilePhoto');
-
-        if (profileName) profileName.textContent = currentProfile.name;
-        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
-        if (profileCar) profileCar.textContent = currentProfile.car;
-        if (profileRegion) profileRegion.textContent = currentProfile.region;
-        if (profileAbout) profileAbout.textContent = currentProfile.about;
-        
-        if (profilePhoto) {
-            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
-        }
+        currentProfile = nextProfile;
+        displayProfile(currentProfile);
 
         // Обработчики кнопок
         const likeButton = document.getElementById('likeButton');
@@ -78,31 +58,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (likeButton) {
             likeButton.addEventListener('click', async () => {
                 try {
-                    if (!currentProfile || !telegramId) {
-                        throw new Error('Нет активного профиля или telegram_id');
+                    if (!currentProfile) {
+                        throw new Error('Нет активного профиля');
                     }
 
-                    await tgApp.api.likeProfile(currentProfile.id, telegramId);
-                    tgApp.api.showNotification('Лайк отправлен!');
+                    const result = await tgApp.api.likeProfile(currentProfile.id);
                     
-                    // Загружаем следующий профиль
-                    currentProfile = await tgApp.api.getNextProfile(telegramId);
-                    if (currentProfile) {
-                        // Обновляем UI
-                        if (profileName) profileName.textContent = currentProfile.name;
-                        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
-                        if (profileCar) profileCar.textContent = currentProfile.car;
-                        if (profileRegion) profileRegion.textContent = currentProfile.region;
-                        if (profileAbout) profileAbout.textContent = currentProfile.about;
-                        if (profilePhoto) {
-                            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
-                        }
+                    if (result.match) {
+                        showMatchNotification();
                     } else {
-                        tgApp.api.showNotification('Больше нет доступных профилей');
+                        tgApp.api.showNotification('Лайк отправлен!');
                     }
+                    
+                    await loadNextProfile();
                 } catch (error) {
                     console.error('Ошибка при отправке лайка:', error);
-                    tgApp.api.showNotification(error.message, true);
+                    showError(error.message);
                 }
             });
         }
@@ -110,41 +81,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (dislikeButton) {
             dislikeButton.addEventListener('click', async () => {
                 try {
-                    if (!currentProfile || !telegramId) {
-                        throw new Error('Нет активного профиля или telegram_id');
+                    if (!currentProfile) {
+                        throw new Error('Нет активного профиля');
                     }
 
-                    await tgApp.api.dislikeProfile(currentProfile.id, telegramId);
+                    await tgApp.api.dislikeProfile(currentProfile.id);
                     tgApp.api.showNotification('Дизлайк отправлен');
                     
-                    // Загружаем следующий профиль
-                    currentProfile = await tgApp.api.getNextProfile(telegramId);
-                    if (currentProfile) {
-                        // Обновляем UI
-                        if (profileName) profileName.textContent = currentProfile.name;
-                        if (profileAge) profileAge.textContent = `${currentProfile.age} лет`;
-                        if (profileCar) profileCar.textContent = currentProfile.car;
-                        if (profileRegion) profileRegion.textContent = currentProfile.region;
-                        if (profileAbout) profileAbout.textContent = currentProfile.about;
-                        if (profilePhoto) {
-                            tgApp.api.setImageWithFallback(profilePhoto, currentProfile.photo_url);
-                        }
-                    } else {
-                        tgApp.api.showNotification('Больше нет доступных профилей');
-                    }
+                    await loadNextProfile();
                 } catch (error) {
                     console.error('Ошибка при отправке дизлайка:', error);
-                    tgApp.api.showNotification(error.message, true);
+                    showError(error.message);
                 }
             });
         }
 
     } catch (error) {
         console.error('Ошибка при инициализации:', error);
-        if (tgApp && tgApp.api) {
-            tgApp.api.showNotification(error.message, true);
-        } else {
-            alert(error.message);
-        }
+        showError(error.message);
     }
-}); 
+});
+
+function displayProfile(profile) {
+    const profileName = document.getElementById('profileName');
+    const profileAge = document.getElementById('profileAge');
+    const profileCar = document.getElementById('profileCar');
+    const profileRegion = document.getElementById('profileRegion');
+    const profileAbout = document.getElementById('profileAbout');
+    const profilePhoto = document.getElementById('profilePhoto');
+
+    if (profileName) profileName.textContent = profile.name || 'Не указано';
+    if (profileAge) profileAge.textContent = profile.age ? `${profile.age} лет` : 'Не указано';
+    if (profileCar) profileCar.textContent = profile.car || 'Не указано';
+    if (profileRegion) profileRegion.textContent = profile.region || 'Не указано';
+    if (profileAbout) profileAbout.textContent = profile.about || 'Нет описания';
+    
+    if (profilePhoto) {
+        tgApp.api.setImageWithFallback(profilePhoto, profile.photo_url);
+    }
+}
+
+function displayNoProfiles() {
+    const container = document.querySelector('.profile-container');
+    if (container) {
+        container.innerHTML = '<div class="no-profiles">Больше нет доступных профилей</div>';
+    }
+    tgApp.api.showNotification('Больше нет доступных профилей');
+}
+
+async function loadNextProfile() {
+    try {
+        const nextProfile = await tgApp.api.getNextProfile();
+        if (nextProfile) {
+            currentProfile = nextProfile;
+            displayProfile(currentProfile);
+        } else {
+            displayNoProfiles();
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке следующего профиля:', error);
+        showError('Не удалось загрузить следующий профиль');
+    }
+}
+
+function showMatchNotification() {
+    tgApp.api.showNotification('У вас новый мэтч!', false);
+}
+
+function showError(message) {
+    console.error(message);
+    if (window.tgApp) {
+        window.tgApp.api.showNotification(message, true);
+    } else {
+        alert(message);
+    }
+} 
