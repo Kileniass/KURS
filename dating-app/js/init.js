@@ -155,6 +155,122 @@ async function initializeUser() {
 
 // Запускаем инициализацию при загрузке страницы
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Страница загружена, начинаем инициализацию');
-    await initializeUser();
-}); 
+    try {
+        // Ждем инициализации tgApp
+        console.log('Начинаем инициализацию приложения...');
+        
+        // Инициализация приложения и получение device_id
+        const userData = await tgApp.api.init();
+        console.log('Пользователь инициализирован:', userData);
+
+        // Получение следующего профиля
+        const nextProfile = await tgApp.api.getNextProfile();
+        console.log('Получен следующий профиль:', nextProfile);
+
+        if (nextProfile) {
+            displayProfile(nextProfile);
+        } else {
+            displayNoMoreProfiles();
+        }
+
+        // Обработчики для кнопок лайк/дизлайк
+        document.getElementById('likeButton').addEventListener('click', async () => {
+            const currentProfile = document.querySelector('.profile-card');
+            const profileId = currentProfile.dataset.profileId;
+            
+            try {
+                const result = await tgApp.api.likeProfile(profileId);
+                if (result.match) {
+                    showMatchNotification();
+                }
+                loadNextProfile();
+            } catch (error) {
+                console.error('Ошибка при отправке лайка:', error);
+                showError('Не удалось поставить лайк');
+            }
+        });
+
+        document.getElementById('dislikeButton').addEventListener('click', async () => {
+            const currentProfile = document.querySelector('.profile-card');
+            const profileId = currentProfile.dataset.profileId;
+            
+            try {
+                await tgApp.api.dislikeProfile(profileId);
+                loadNextProfile();
+            } catch (error) {
+                console.error('Ошибка при отправке дизлайка:', error);
+                showError('Не удалось поставить дизлайк');
+            }
+        });
+
+    } catch (error) {
+        console.error('Ошибка при инициализации:', error);
+        showError('Не удалось инициализировать приложение');
+    }
+});
+
+// Вспомогательные функции
+function displayProfile(profile) {
+    const profileCard = document.querySelector('.profile-card');
+    profileCard.dataset.profileId = profile.id;
+    
+    document.getElementById('profileName').textContent = profile.name || 'Без имени';
+    document.getElementById('profileAge').textContent = profile.age ? `${profile.age} лет` : '';
+    document.getElementById('profileCar').textContent = profile.car || 'Автомобиль не указан';
+    document.getElementById('profileRegion').textContent = profile.region || 'Регион не указан';
+    document.getElementById('profileAbout').textContent = profile.about || 'Нет описания';
+    
+    const profilePhoto = document.getElementById('profilePhoto');
+    if (profile.photo_url) {
+        profilePhoto.src = profile.photo_url;
+        profilePhoto.alt = `Фото ${profile.name}`;
+    } else {
+        profilePhoto.src = '/image/default-profile.jpg';
+        profilePhoto.alt = 'Фото профиля отсутствует';
+    }
+}
+
+function displayNoMoreProfiles() {
+    const container = document.querySelector('.profile-container');
+    container.innerHTML = `
+        <div class="no-profiles">
+            <h2>Больше нет профилей</h2>
+            <p>Возвращайтесь позже, чтобы увидеть новые анкеты</p>
+        </div>
+    `;
+}
+
+async function loadNextProfile() {
+    try {
+        const nextProfile = await tgApp.api.getNextProfile();
+        if (nextProfile) {
+            displayProfile(nextProfile);
+        } else {
+            displayNoMoreProfiles();
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке следующего профиля:', error);
+        showError('Не удалось загрузить следующий профиль');
+    }
+}
+
+function showMatchNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'match-notification';
+    notification.innerHTML = `
+        <h3>Это взаимно!</h3>
+        <p>У вас появилось новое совпадение</p>
+        <button onclick="this.parentElement.remove()">OK</button>
+    `;
+    document.body.appendChild(notification);
+}
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-notification';
+    errorDiv.innerHTML = `
+        <p>${message}</p>
+        <button onclick="this.parentElement.remove()">OK</button>
+    `;
+    document.body.appendChild(errorDiv);
+} 

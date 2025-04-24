@@ -20,22 +20,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        // Ждем инициализации tgApp
-        tgApp = await waitForTgApp();
-        console.log('tgApp инициализирован');
-
-        if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
-            throw new Error('Telegram WebApp не инициализирован корректно');
-        }
-
-        // Получаем telegram_id
-        const telegramId = tgApp.api.getTelegramId();
-        console.log('Получен telegram_id:', telegramId);
-
+        console.log('Загрузка профиля...');
+        
         // Получаем профиль пользователя
         const profile = await tgApp.api.getProfile();
         console.log('Профиль получен:', profile);
-
+        
         // Заполняем данные профиля
         if (profile) {
             document.getElementById('userName').textContent = profile.name || 'Не указано';
@@ -60,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
     } catch (error) {
-        console.error('Error loading profile:', error);
+        console.error('Ошибка при загрузке профиля:', error);
         showError('Не удалось загрузить профиль');
     }
 });
