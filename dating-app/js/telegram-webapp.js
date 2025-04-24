@@ -102,6 +102,41 @@ class TelegramWebApp {
         this.initPromise = this.initialize();
 
         this.api = {
+            init: async () => {
+                try {
+                    await this.initPromise;
+                    const response = await request(`${this.API_BASE_URL}/init`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response && response.device_id) {
+                        this.device_id = response.device_id;
+                        localStorage.setItem('device_id', this.device_id);
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    console.error('Error in init:', error);
+                    throw error;
+                }
+            },
+
+            getProfile: async () => {
+                try {
+                    await this.initPromise;
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    const response = await request(`${this.API_BASE_URL}/users/${this.device_id}`);
+                    return response;
+                } catch (error) {
+                    if (error.message.includes('404')) {
+                        return null;
+                    }
+                    throw error;
+                }
+            },
+
             initUser: async (deviceId) => {
                 try {
                     await this.initPromise;
@@ -124,38 +159,6 @@ class TelegramWebApp {
                     return response;
                 } catch (error) {
                     console.error('Error in initUser:', error);
-                    throw error;
-                }
-            },
-
-            init: async () => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        const response = await request(`${this.API_BASE_URL}/init`, {
-                            method: 'POST'
-                        });
-                        this.device_id = response.device_id;
-                        localStorage.setItem('device_id', this.device_id);
-                    }
-                    return { device_id: this.device_id };
-                } catch (error) {
-                    console.error('Error initializing:', error);
-                    throw error;
-                }
-            },
-
-            getProfile: async () => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users/${this.device_id}`);
-                } catch (error) {
-                    if (error.message.includes('404')) {
-                        return null; // Профиль не найден
-                    }
                     throw error;
                 }
             },
@@ -307,11 +310,13 @@ class TelegramWebApp {
     async initialize() {
         return new Promise((resolve) => {
             if (!tg) {
-                throw new Error('Telegram WebApp не найден');
+                console.error('Telegram WebApp не найден');
+                resolve(); // Продолжаем работу даже без Telegram WebApp
+                return;
             }
 
             const checkReady = () => {
-                if (tg.initData && tg.initDataUnsafe) {
+                if (tg.initData || tg.initDataUnsafe) {
                     tg.ready();
                     tg.expand();
                     this.isInitialized = true;

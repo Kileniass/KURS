@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 const checkTgApp = () => {
                     attempts++;
-                    if (window.tgApp && window.tgApp.isInitialized) {
-                        console.log('Telegram WebApp инициализирован');
+                    if (window.tgApp) {
+                        console.log('Telegram WebApp найден');
                         resolve(window.tgApp);
                     } else if (attempts >= maxAttempts) {
                         reject(new Error('Timeout waiting for Telegram WebApp initialization'));
@@ -22,99 +22,130 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
+        console.log('Начало инициализации...');
+
         // Get tgApp instance
         const tgApp = await waitForTgApp();
-        console.log('tgApp obtained');
-
-        // Wait for full initialization
-        await tgApp.initPromise;
-        console.log('tgApp fully initialized');
+        console.log('tgApp получен:', tgApp);
 
         // Generate or retrieve device ID
         let deviceId = localStorage.getItem('device_id');
         if (!deviceId) {
             deviceId = crypto.randomUUID();
             localStorage.setItem('device_id', deviceId);
+            console.log('Создан новый device_id:', deviceId);
+        } else {
+            console.log('Использован существующий device_id:', deviceId);
         }
-        console.log('Using device ID:', deviceId);
 
         // Initialize user profile
         try {
+            console.log('Начало инициализации пользователя...');
             // Инициализируем пользователя с deviceId
-            const initResponse = await tgApp.api.initUser(deviceId);
-            console.log('User initialized:', initResponse);
+            const initResponse = await tgApp.api.init();
+            console.log('Ответ инициализации:', initResponse);
 
             // Получаем профиль
             const profile = await tgApp.api.getProfile();
-            console.log('User profile:', profile);
+            console.log('Профиль пользователя:', profile);
 
             if (!profile) {
-                // Если профиль не существует, перенаправляем на страницу создания профиля
-                window.location.href = '/profile-change.html';
+                console.log('Профиль не найден, перенаправление на страницу создания...');
+                window.location.href = 'profile-change.html';
                 return;
             }
-        } catch (error) {
-            console.error('Error initializing user:', error);
-            showError('Failed to initialize user profile');
-            return;
-        }
 
-        // Load next profile
-        try {
-            const nextProfile = await tgApp.api.getNextProfile();
-            if (nextProfile) {
-                displayProfile(nextProfile);
+            // Load next profile
+            const nextProfileResponse = await tgApp.api.getNextProfile();
+            console.log('Следующий профиль:', nextProfileResponse);
+            
+            if (nextProfileResponse && nextProfileResponse.profile) {
+                displayProfile(nextProfileResponse.profile);
             } else {
                 displayNoMoreProfiles();
             }
         } catch (error) {
-            console.error('Error loading next profile:', error);
-            showError('Failed to load next profile');
+            console.error('Ошибка при инициализации:', error);
+            if (error.message.includes('404')) {
+                console.log('Профиль не найден, перенаправление на создание...');
+                window.location.href = 'profile-change.html';
+            } else {
+                showError('Ошибка инициализации: ' + error.message);
+            }
             return;
         }
 
         // Add event listeners for like/dislike buttons
-        document.getElementById('likeButton').addEventListener('click', async () => {
+        document.getElementById('likeButton')?.addEventListener('click', async () => {
             try {
-                const currentProfile = document.querySelector('.profile-card').dataset.profileId;
+                const profileCard = document.querySelector('.profile-card');
+                if (!profileCard) {
+                    console.error('Profile card not found');
+                    return;
+                }
+                
+                const currentProfile = profileCard.dataset.profileId;
+                if (!currentProfile) {
+                    console.error('No profile ID found');
+                    return;
+                }
+
+                console.log('Отправка лайка для профиля:', currentProfile);
                 const result = await tgApp.api.likeProfile(currentProfile);
+                console.log('Результат лайка:', result);
                 
                 if (result.match) {
                     showMatchNotification();
                 }
                 
-                const nextProfile = await tgApp.api.getNextProfile();
-                if (nextProfile) {
-                    displayProfile(nextProfile);
+                const nextProfileResponse = await tgApp.api.getNextProfile();
+                console.log('Следующий профиль после лайка:', nextProfileResponse);
+                
+                if (nextProfileResponse && nextProfileResponse.profile) {
+                    displayProfile(nextProfileResponse.profile);
                 } else {
                     displayNoMoreProfiles();
                 }
             } catch (error) {
-                console.error('Error processing like:', error);
-                showError('Failed to process like');
+                console.error('Ошибка при обработке лайка:', error);
+                showError('Не удалось обработать лайк: ' + error.message);
             }
         });
 
-        document.getElementById('dislikeButton').addEventListener('click', async () => {
+        document.getElementById('dislikeButton')?.addEventListener('click', async () => {
             try {
-                const currentProfile = document.querySelector('.profile-card').dataset.profileId;
+                const profileCard = document.querySelector('.profile-card');
+                if (!profileCard) {
+                    console.error('Profile card not found');
+                    return;
+                }
+                
+                const currentProfile = profileCard.dataset.profileId;
+                if (!currentProfile) {
+                    console.error('No profile ID found');
+                    return;
+                }
+
+                console.log('Отправка дизлайка для профиля:', currentProfile);
                 await tgApp.api.dislikeProfile(currentProfile);
                 
-                const nextProfile = await tgApp.api.getNextProfile();
-                if (nextProfile) {
-                    displayProfile(nextProfile);
+                const nextProfileResponse = await tgApp.api.getNextProfile();
+                console.log('Следующий профиль после дизлайка:', nextProfileResponse);
+                
+                if (nextProfileResponse && nextProfileResponse.profile) {
+                    displayProfile(nextProfileResponse.profile);
                 } else {
                     displayNoMoreProfiles();
                 }
             } catch (error) {
-                console.error('Error processing dislike:', error);
-                showError('Failed to process dislike');
+                console.error('Ошибка при обработке дизлайка:', error);
+                showError('Не удалось обработать дизлайк: ' + error.message);
             }
         });
 
     } catch (error) {
-        console.error('Initialization error:', error);
-        showError('Failed to initialize application');
+        console.error('Критическая ошибка:', error);
+        showError('Критическая ошибка приложения: ' + error.message);
     }
 });
 
