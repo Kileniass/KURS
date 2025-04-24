@@ -37,11 +37,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Initialize user profile
         try {
-            // Сначала инициализируем пользователя
-            const initResponse = await tgApp.api.init();
+            // Инициализируем пользователя с deviceId
+            const initResponse = await tgApp.api.initUser(deviceId);
             console.log('User initialized:', initResponse);
 
-            // Затем получаем профиль
+            // Получаем профиль
             const profile = await tgApp.api.getProfile();
             console.log('User profile:', profile);
 

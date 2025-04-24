@@ -104,6 +104,26 @@ class TelegramWebApp {
         this.initPromise = this.initialize();
 
         this.api = {
+            initUser: async (deviceId) => {
+                try {
+                    await this.initPromise;
+                    // Сохраняем device_id
+                    this.device_id = deviceId;
+                    localStorage.setItem('device_id', deviceId);
+                    
+                    // Инициализируем пользователя
+                    const response = await request(`${this.API_BASE_URL}/init`, {
+                        method: 'POST',
+                        body: JSON.stringify({ device_id: deviceId })
+                    });
+                    
+                    return response;
+                } catch (error) {
+                    console.error('Error in initUser:', error);
+                    throw error;
+                }
+            },
+
             init: async () => {
                 try {
                     await this.initPromise;
