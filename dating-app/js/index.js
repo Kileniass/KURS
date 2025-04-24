@@ -1,10 +1,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        console.log('Начало инициализации приложения...');
+        
         // Wait for tgApp initialization
         async function waitForTgApp() {
             return new Promise((resolve, reject) => {
                 let attempts = 0;
-                const maxAttempts = 20; // 10 секунд с интервалом 500мс
+                const maxAttempts = 20;
                 
                 const checkTgApp = () => {
                     attempts++;
@@ -12,7 +14,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         console.log('Telegram WebApp найден');
                         resolve(window.tgApp);
                     } else if (attempts >= maxAttempts) {
-                        reject(new Error('Timeout waiting for Telegram WebApp initialization'));
+                        console.warn('Telegram WebApp не найден после ' + maxAttempts + ' попыток');
+                        resolve(null); // Продолжаем без Telegram WebApp
                     } else {
                         setTimeout(checkTgApp, 500);
                     }
@@ -22,11 +25,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        console.log('Начало инициализации...');
-
         // Get tgApp instance
         const tgApp = await waitForTgApp();
-        console.log('tgApp получен:', tgApp);
+        console.log('Статус инициализации tgApp:', tgApp ? 'успешно' : 'не найден');
 
         // Generate or retrieve device ID
         let deviceId = localStorage.getItem('device_id');
@@ -41,7 +42,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Initialize user profile
         try {
             console.log('Начало инициализации пользователя...');
-            // Инициализируем пользователя с deviceId
+            
+            if (!tgApp) {
+                throw new Error('Telegram WebApp не инициализирован');
+            }
+
+            // Инициализируем пользователя
             const initResponse = await tgApp.api.init();
             console.log('Ответ инициализации:', initResponse);
 
@@ -50,8 +56,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Профиль пользователя:', profile);
 
             if (!profile) {
-                console.log('Профиль не найден, перенаправление на страницу создания...');
-                window.location.href = 'profile-change.html';
+                console.log('Профиль не найден, перенаправление на создание...');
+                // Используем относительный путь
+                const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                window.location.href = baseUrl + 'profile-change.html';
                 return;
             }
 
@@ -68,7 +76,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Ошибка при инициализации:', error);
             if (error.message.includes('404')) {
                 console.log('Профиль не найден, перенаправление на создание...');
-                window.location.href = 'profile-change.html';
+                const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+                window.location.href = baseUrl + 'profile-change.html';
             } else {
                 showError('Ошибка инициализации: ' + error.message);
             }

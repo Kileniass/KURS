@@ -1,5 +1,5 @@
 // Инициализация Telegram WebApp
-const tg = window.Telegram.WebApp;
+const tg = window.Telegram?.WebApp;
 
 // Базовые пути
 const API_BASE_URL = 'https://tg-bd.onrender.com/api';
@@ -65,23 +65,36 @@ function addNotification(message, isError = false) {
 // Функция для отправки запросов к API
 async function request(url, options = {}) {
     try {
-        console.log('Отправка запроса к API:', { url, ...options });
+        console.log('Отправка запроса к API:', { url, options });
         
         const defaultOptions = {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Origin': 'https://kileniass.github.io'
+                'Origin': window.location.origin
             },
             credentials: 'include',
             mode: 'cors'
         };
 
-        const response = await fetch(url, { ...defaultOptions, ...options });
+        // Объединяем заголовки
+        const mergedOptions = {
+            ...defaultOptions,
+            ...options,
+            headers: {
+                ...defaultOptions.headers,
+                ...(options.headers || {})
+            }
+        };
+
+        console.log('Итоговые параметры запроса:', mergedOptions);
+
+        const response = await fetch(url, mergedOptions);
         console.log('Получен ответ:', response);
 
         if (!response.ok) {
             const errorText = await response.text();
+            console.error('API Error:', response.status, errorText);
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
@@ -106,7 +119,10 @@ class TelegramWebApp {
                 try {
                     await this.initPromise;
                     const response = await request(`${this.API_BASE_URL}/init`, {
-                        method: 'POST'
+                        method: 'POST',
+                        body: JSON.stringify({
+                            device_id: this.device_id
+                        })
                     });
                     
                     if (response && response.device_id) {
@@ -310,18 +326,20 @@ class TelegramWebApp {
     async initialize() {
         return new Promise((resolve) => {
             if (!tg) {
-                console.error('Telegram WebApp не найден');
-                resolve(); // Продолжаем работу даже без Telegram WebApp
+                console.warn('Telegram WebApp не найден, продолжаем без него');
+                resolve();
                 return;
             }
 
             const checkReady = () => {
                 if (tg.initData || tg.initDataUnsafe) {
+                    console.log('Telegram WebApp готов');
                     tg.ready();
                     tg.expand();
                     this.isInitialized = true;
                     resolve();
                 } else {
+                    console.log('Ожидание инициализации Telegram WebApp...');
                     setTimeout(checkReady, 100);
                 }
             };
