@@ -1,158 +1,181 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    let tgApp = null;
-    let currentProfile = null;
-
-    // Функция ожидания инициализации tgApp
-    async function waitForTgApp(timeout = 5000) {
-        return new Promise((resolve, reject) => {
-            const startTime = Date.now();
-            
-            const check = () => {
-                if (window.tgApp && window.tgApp.isReady()) {
-                    resolve(window.tgApp);
-                } else if (Date.now() - startTime >= timeout) {
-                    reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));
-                } else {
-                    setTimeout(check, 100);
-                }
-            };
-            check();
-        });
-    }
-
     try {
-        // Ждем инициализации tgApp
-        tgApp = await waitForTgApp();
-        console.log('tgApp инициализирован');
-
-        // Инициализируем пользователя
-        const user = await tgApp.api.init();
-        console.log('Пользователь инициализирован:', user);
-
-        // Получаем профиль пользователя
-        const profile = await tgApp.api.getProfile();
-        console.log('Профиль пользователя получен:', profile);
-
-        if (!profile) {
-            // Если профиль не существует, перенаправляем на страницу создания профиля
-            window.location.href = '/profile-change.html';
-            return;
-        }
-
-        // Загружаем следующий профиль
-        const nextProfile = await tgApp.api.getNextProfile();
-        console.log('Следующий профиль загружен:', nextProfile);
-
-        if (!nextProfile) {
-            displayNoProfiles();
-            return;
-        }
-
-        currentProfile = nextProfile;
-        displayProfile(currentProfile);
-
-        // Обработчики кнопок
-        const likeButton = document.getElementById('likeButton');
-        const dislikeButton = document.getElementById('dislikeButton');
-
-        if (likeButton) {
-            likeButton.addEventListener('click', async () => {
-                try {
-                    if (!currentProfile) {
-                        throw new Error('Нет активного профиля');
-                    }
-
-                    const result = await tgApp.api.likeProfile(currentProfile.id);
-                    
-                    if (result.match) {
-                        showMatchNotification();
+        // Wait for tgApp initialization
+        async function waitForTgApp(timeout = 10000) {
+            return new Promise((resolve, reject) => {
+                const startTime = Date.now();
+                
+                const check = () => {
+                    if (window.tgApp) {
+                        resolve(window.tgApp);
+                    } else if (Date.now() - startTime >= timeout) {
+                        reject(new Error('Timeout waiting for tgApp'));
                     } else {
-                        tgApp.api.showNotification('Лайк отправлен!');
+                        setTimeout(check, 100);
                     }
-                    
-                    await loadNextProfile();
-                } catch (error) {
-                    console.error('Ошибка при отправке лайка:', error);
-                    showError(error.message);
-                }
+                };
+                
+                check();
             });
         }
 
-        if (dislikeButton) {
-            dislikeButton.addEventListener('click', async () => {
-                try {
-                    if (!currentProfile) {
-                        throw new Error('Нет активного профиля');
-                    }
+        // Get tgApp instance
+        const tgApp = await waitForTgApp();
+        console.log('tgApp obtained');
 
-                    await tgApp.api.dislikeProfile(currentProfile.id);
-                    tgApp.api.showNotification('Дизлайк отправлен');
-                    
-                    await loadNextProfile();
-                } catch (error) {
-                    console.error('Ошибка при отправке дизлайка:', error);
-                    showError(error.message);
-                }
-            });
+        // Wait for full initialization
+        await tgApp.initPromise;
+        console.log('tgApp fully initialized');
+
+        // Generate or retrieve device ID
+        let deviceId = localStorage.getItem('deviceId');
+        if (!deviceId) {
+            deviceId = crypto.randomUUID();
+            localStorage.setItem('deviceId', deviceId);
         }
+        console.log('Using device ID:', deviceId);
+
+        // Initialize user profile
+        try {
+            const profile = await tgApp.api.initUser(deviceId);
+            console.log('User profile initialized');
+        } catch (error) {
+            console.error('Error initializing user:', error);
+            showError('Failed to initialize user profile');
+            return;
+        }
+
+        // Load next profile
+        try {
+            const nextProfile = await tgApp.api.getNextProfile(deviceId);
+            if (nextProfile) {
+                displayProfile(nextProfile);
+            } else {
+                displayNoMoreProfiles();
+            }
+        } catch (error) {
+            console.error('Error loading next profile:', error);
+            showError('Failed to load next profile');
+            return;
+        }
+
+        // Add event listeners for like/dislike buttons
+        document.getElementById('likeButton').addEventListener('click', async () => {
+            try {
+                const currentProfile = document.querySelector('.profile-card').dataset.profileId;
+                const result = await tgApp.api.likeProfile(deviceId, currentProfile);
+                
+                if (result.isMatch) {
+                    showMatchNotification();
+                }
+                
+                const nextProfile = await tgApp.api.getNextProfile(deviceId);
+                if (nextProfile) {
+                    displayProfile(nextProfile);
+                } else {
+                    displayNoMoreProfiles();
+                }
+            } catch (error) {
+                console.error('Error processing like:', error);
+                showError('Failed to process like');
+            }
+        });
+
+        document.getElementById('dislikeButton').addEventListener('click', async () => {
+            try {
+                const currentProfile = document.querySelector('.profile-card').dataset.profileId;
+                await tgApp.api.dislikeProfile(deviceId, currentProfile);
+                
+                const nextProfile = await tgApp.api.getNextProfile(deviceId);
+                if (nextProfile) {
+                    displayProfile(nextProfile);
+                } else {
+                    displayNoMoreProfiles();
+                }
+            } catch (error) {
+                console.error('Error processing dislike:', error);
+                showError('Failed to process dislike');
+            }
+        });
 
     } catch (error) {
-        console.error('Ошибка при инициализации:', error);
-        showError(error.message);
+        console.error('Initialization error:', error);
+        showError('Failed to initialize application');
     }
 });
 
 function displayProfile(profile) {
-    const profileName = document.getElementById('profileName');
-    const profileAge = document.getElementById('profileAge');
-    const profileCar = document.getElementById('profileCar');
-    const profileRegion = document.getElementById('profileRegion');
-    const profileAbout = document.getElementById('profileAbout');
-    const profilePhoto = document.getElementById('profilePhoto');
-
-    if (profileName) profileName.textContent = profile.name || 'Не указано';
-    if (profileAge) profileAge.textContent = profile.age ? `${profile.age} лет` : 'Не указано';
-    if (profileCar) profileCar.textContent = profile.car || 'Не указано';
-    if (profileRegion) profileRegion.textContent = profile.region || 'Не указано';
-    if (profileAbout) profileAbout.textContent = profile.about || 'Нет описания';
+    const profileCard = document.querySelector('.profile-card');
+    profileCard.dataset.profileId = profile.id;
     
-    if (profilePhoto) {
-        tgApp.api.setImageWithFallback(profilePhoto, profile.photo_url);
+    document.getElementById('profileName').textContent = profile.name;
+    document.getElementById('profileAge').textContent = profile.age;
+    
+    if (profile.car) {
+        document.getElementById('profileCar').textContent = profile.car;
+        document.getElementById('carSection').style.display = 'block';
+    } else {
+        document.getElementById('carSection').style.display = 'none';
+    }
+    
+    if (profile.region) {
+        document.getElementById('profileRegion').textContent = profile.region;
+        document.getElementById('regionSection').style.display = 'block';
+    } else {
+        document.getElementById('regionSection').style.display = 'none';
+    }
+    
+    if (profile.about) {
+        document.getElementById('profileAbout').textContent = profile.about;
+        document.getElementById('aboutSection').style.display = 'block';
+    } else {
+        document.getElementById('aboutSection').style.display = 'none';
+    }
+    
+    const profileImage = document.getElementById('profileImage');
+    if (profile.photo_url) {
+        profileImage.src = profile.photo_url;
+        profileImage.alt = `${profile.name}'s photo`;
+    } else {
+        profileImage.src = 'images/default-profile.jpg';
+        profileImage.alt = 'Default profile photo';
     }
 }
 
-function displayNoProfiles() {
-    const container = document.querySelector('.profile-container');
-    if (container) {
-        container.innerHTML = '<div class="no-profiles">Больше нет доступных профилей</div>';
-    }
-    tgApp.api.showNotification('Больше нет доступных профилей');
-}
-
-async function loadNextProfile() {
-    try {
-        const nextProfile = await tgApp.api.getNextProfile();
-        if (nextProfile) {
-            currentProfile = nextProfile;
-            displayProfile(currentProfile);
-        } else {
-            displayNoProfiles();
-        }
-    } catch (error) {
-        console.error('Ошибка при загрузке следующего профиля:', error);
-        showError('Не удалось загрузить следующий профиль');
-    }
+function displayNoMoreProfiles() {
+    const profileCard = document.querySelector('.profile-card');
+    profileCard.innerHTML = `
+        <div class="no-profiles">
+            <h2>No more profiles</h2>
+            <p>Check back later for new matches!</p>
+        </div>
+    `;
+    document.getElementById('likeButton').disabled = true;
+    document.getElementById('dislikeButton').disabled = true;
 }
 
 function showMatchNotification() {
-    tgApp.api.showNotification('У вас новый мэтч!', false);
+    const notification = document.createElement('div');
+    notification.className = 'match-notification';
+    notification.innerHTML = `
+        <div class="match-content">
+            <h3>It's a match! 🎉</h3>
+            <p>You can now chat with this person</p>
+            <button onclick="this.parentElement.parentElement.remove()">OK</button>
+        </div>
+    `;
+    document.body.appendChild(notification);
 }
 
 function showError(message) {
-    console.error(message);
-    if (window.tgApp) {
-        window.tgApp.api.showNotification(message, true);
-    } else {
-        alert(message);
-    }
+    const notification = document.createElement('div');
+    notification.className = 'error-notification';
+    notification.innerHTML = `
+        <div class="error-content">
+            <h3>Error</h3>
+            <p>${message}</p>
+            <button onclick="this.parentElement.parentElement.remove()">OK</button>
+        </div>
+    `;
+    document.body.appendChild(notification);
 } 

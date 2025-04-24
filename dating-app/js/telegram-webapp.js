@@ -101,17 +101,12 @@ class TelegramWebApp {
         this.API_BASE_URL = API_BASE_URL;
         this.device_id = localStorage.getItem('device_id');
         this.isInitialized = false;
-
-        // Инициализируем Telegram WebApp
-        if (tg) {
-            tg.ready();
-            tg.expand();
-            this.isInitialized = true;
-        }
+        this.initPromise = this.initialize();
 
         this.api = {
             init: async () => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         const response = await request(`${this.API_BASE_URL}/init`, {
                             method: 'POST'
@@ -128,6 +123,7 @@ class TelegramWebApp {
 
             getProfile: async () => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -142,6 +138,7 @@ class TelegramWebApp {
 
             createProfile: async (profileData) => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -157,6 +154,7 @@ class TelegramWebApp {
 
             updateProfile: async (profileData) => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -172,6 +170,7 @@ class TelegramWebApp {
 
             uploadPhoto: async (formData) => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -187,6 +186,7 @@ class TelegramWebApp {
 
             getNextProfile: async () => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -199,6 +199,7 @@ class TelegramWebApp {
 
             likeProfile: async (targetId) => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -213,6 +214,7 @@ class TelegramWebApp {
 
             dislikeProfile: async (targetId) => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -227,6 +229,7 @@ class TelegramWebApp {
 
             getMatches: async () => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -239,6 +242,7 @@ class TelegramWebApp {
 
             getLikes: async () => {
                 try {
+                    await this.initPromise;
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
@@ -274,6 +278,27 @@ class TelegramWebApp {
                 };
             }
         };
+    }
+
+    async initialize() {
+        return new Promise((resolve) => {
+            if (!tg) {
+                throw new Error('Telegram WebApp не найден');
+            }
+
+            const checkReady = () => {
+                if (tg.initData && tg.initDataUnsafe) {
+                    tg.ready();
+                    tg.expand();
+                    this.isInitialized = true;
+                    resolve();
+                } else {
+                    setTimeout(checkReady, 100);
+                }
+            };
+
+            checkReady();
+        });
     }
 
     isReady() {
