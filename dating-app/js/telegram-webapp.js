@@ -2,7 +2,7 @@
 const tg = window.Telegram.WebApp;
 
 // Базовые пути
-const API_BASE_URL = 'https://tg-bd.onrender.com/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 const STATIC_BASE_URL = 'https://tg-bd.onrender.com/static';
 
 // Очередь уведомлений
@@ -99,6 +99,164 @@ async function request(url, options = {}) {
 // Инициализация приложения
 tg.ready();
 tg.expand();
+
+class TelegramWebApp {
+    constructor() {
+        this.API_BASE_URL = 'http://localhost:8000/api';
+        this.device_id = null;
+        this.api = {
+            init: async () => {
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/init`, {
+                        method: 'POST'
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    this.device_id = data.device_id;
+                    return data;
+                } catch (error) {
+                    console.error('Error initializing user:', error);
+                    throw error;
+                }
+            },
+
+            getProfile: async () => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error getting profile:', error);
+                    throw error;
+                }
+            },
+
+            updateProfile: async (profileData) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(profileData)
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error updating profile:', error);
+                    throw error;
+                }
+            },
+
+            uploadPhoto: async (formData) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/photo`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error uploading photo:', error);
+                    throw error;
+                }
+            },
+
+            getNextProfile: async () => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/next`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    return data.profile;
+                } catch (error) {
+                    console.error('Error getting next profile:', error);
+                    throw error;
+                }
+            },
+
+            likeProfile: async (targetId) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/like/${targetId}`, {
+                        method: 'POST'
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error liking profile:', error);
+                    throw error;
+                }
+            },
+
+            dislikeProfile: async (targetId) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/dislike/${targetId}`, {
+                        method: 'POST'
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error disliking profile:', error);
+                    throw error;
+                }
+            },
+
+            getMatches: async () => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/matches`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Error getting matches:', error);
+                    throw error;
+                }
+            },
+
+            getDeviceId: () => {
+                return this.device_id;
+            }
+        };
+    }
+}
+
+// Создаем глобальный экземпляр приложения
+window.tgApp = new TelegramWebApp();
 
 // API методы
 const api = {

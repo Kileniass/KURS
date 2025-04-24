@@ -33,41 +33,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Получен telegram_id:', telegramId);
 
         // Получаем профиль пользователя
-        const profile = await tgApp.api.getProfile(telegramId);
+        const profile = await tgApp.api.getProfile();
         console.log('Профиль получен:', profile);
 
-        // Обновляем UI
-        const profileName = document.getElementById('profileName');
-        const profileAge = document.getElementById('profileAge');
-        const profileCar = document.getElementById('profileCar');
-        const profileRegion = document.getElementById('profileRegion');
-        const profileAbout = document.getElementById('profileAbout');
-        const profilePhoto = document.getElementById('profilePhoto');
-
-        if (profileName) profileName.textContent = profile.name || 'Не указано';
-        if (profileAge) profileAge.textContent = profile.age ? `${profile.age} лет` : 'Не указано';
-        if (profileCar) profileCar.textContent = profile.car || 'Не указано';
-        if (profileRegion) profileRegion.textContent = profile.region || 'Не указано';
-        if (profileAbout) profileAbout.textContent = profile.about || 'Нет описания';
-        
-        if (profilePhoto) {
-            tgApp.api.setImageWithFallback(profilePhoto, profile.photo_url);
+        // Заполняем данные профиля
+        if (profile) {
+            document.getElementById('userName').textContent = profile.name || 'Не указано';
+            document.getElementById('userAge').textContent = profile.age ? `${profile.age} лет` : 'Не указан';
+            document.getElementById('userCar').textContent = profile.car || 'Не указан';
+            document.getElementById('userRegion').textContent = profile.region || 'Не указан';
+            document.getElementById('userAbout').textContent = profile.about || 'Нет описания';
+            
+            const userPhoto = document.getElementById('userPhoto');
+            if (profile.photo_url) {
+                userPhoto.src = profile.photo_url;
+                userPhoto.alt = `Фото ${profile.name}`;
+            } else {
+                userPhoto.src = '/image/default-profile.jpg';
+                userPhoto.alt = 'Фото профиля отсутствует';
+            }
         }
 
-        // Обработчик кнопки редактирования
-        const editButton = document.getElementById('editButton');
-        if (editButton) {
-            editButton.addEventListener('click', () => {
-                window.location.href = 'profile-change.html';
-            });
-        }
+        // Обработчик для кнопки редактирования
+        document.getElementById('editProfileButton').addEventListener('click', () => {
+            window.location.href = '/profile-change.html';
+        });
 
     } catch (error) {
-        console.error('Ошибка при инициализации:', error);
-        if (tgApp && tgApp.api) {
-            tgApp.api.showNotification(error.message, true);
-        } else {
-            alert(error.message);
-        }
+        console.error('Error loading profile:', error);
+        showError('Не удалось загрузить профиль');
     }
-}); 
+});
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-notification';
+    errorDiv.innerHTML = `
+        <p>${message}</p>
+        <button onclick="this.parentElement.remove()">OK</button>
+    `;
+    document.body.appendChild(errorDiv);
+} 

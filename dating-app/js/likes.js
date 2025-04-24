@@ -59,35 +59,62 @@ document.addEventListener('DOMContentLoaded', async () => {
         const telegramId = tgApp.api.getTelegramId();
         console.log('Получен telegram_id:', telegramId);
 
-        // Получаем лайки
-        const likes = await tgApp.api.getLikes(telegramId);
-        console.log('Лайки получены:', likes);
-
-        // Обновляем UI
-        const likesContainer = document.getElementById('likesContainer');
-        if (likesContainer) {
-            if (likes && likes.length > 0) {
-                likesContainer.innerHTML = likes.map(like => `
-                    <div class="like-item">
-                        <img src="${like.photo_url || tgApp.STATIC_BASE_URL + '/photos/hero-image.jpg'}" alt="${like.name}" class="like-photo">
-                        <div class="like-info">
-                            <h3>${like.name}, ${like.age}</h3>
-                            <p>${like.car || 'Автомобиль не указан'}</p>
-                            <p>${like.region || 'Регион не указан'}</p>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                likesContainer.innerHTML = '<p>У вас пока нет лайков</p>';
-            }
+        // Получаем список совпадений
+        const matches = await tgApp.api.getMatches();
+        
+        if (matches && matches.length > 0) {
+            displayMatches(matches);
+        } else {
+            displayNoMatches();
         }
 
     } catch (error) {
-        console.error('Ошибка при загрузке лайков:', error);
-        if (tgApp && tgApp.api) {
-            tgApp.api.showNotification(error.message, true);
-        } else {
-            alert(error.message);
-        }
+        console.error('Error loading matches:', error);
+        showError('Не удалось загрузить список совпадений');
     }
-}); 
+});
+
+function displayMatches(matches) {
+    const matchesContainer = document.querySelector('.matches-container');
+    matchesContainer.innerHTML = '';
+
+    matches.forEach(match => {
+        const matchCard = document.createElement('div');
+        matchCard.className = 'match-card';
+        matchCard.innerHTML = `
+            <div class="match-photo">
+                <img src="${match.photo_url || '/image/default-profile.jpg'}" 
+                     alt="Фото ${match.name || 'пользователя'}"
+                     onerror="this.src='/image/default-profile.jpg'">
+            </div>
+            <div class="match-info">
+                <h3>${match.name || 'Без имени'}</h3>
+                <p class="age">${match.age ? `${match.age} лет` : 'Возраст не указан'}</p>
+                <p class="car">${match.car || 'Автомобиль не указан'}</p>
+                <p class="region">${match.region || 'Регион не указан'}</p>
+                <p class="about">${match.about || 'Нет описания'}</p>
+            </div>
+        `;
+        matchesContainer.appendChild(matchCard);
+    });
+}
+
+function displayNoMatches() {
+    const matchesContainer = document.querySelector('.matches-container');
+    matchesContainer.innerHTML = `
+        <div class="no-matches">
+            <h2>Пока нет совпадений</h2>
+            <p>Продолжайте искать и ставить лайки, чтобы найти единомышленников</p>
+        </div>
+    `;
+}
+
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-notification';
+    errorDiv.innerHTML = `
+        <p>${message}</p>
+        <button onclick="this.parentElement.remove()">OK</button>
+    `;
+    document.body.appendChild(errorDiv);
+} 
