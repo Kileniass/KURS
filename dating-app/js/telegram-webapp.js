@@ -2,7 +2,7 @@
 const tg = window.Telegram.WebApp;
 
 // Базовые пути
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'https://tg-bd.onrender.com/api';
 const STATIC_BASE_URL = 'https://tg-bd.onrender.com/static';
 
 // Очередь уведомлений
@@ -75,8 +75,12 @@ async function request(url, options = {}) {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Origin': 'https://kileniass.github.io'
-            }
+                'Origin': 'https://kileniass.github.io',
+                'Access-Control-Allow-Origin': 'https://kileniass.github.io',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Accept, Origin'
+            },
+            credentials: 'include'
         };
 
         const response = await fetch(url, { ...defaultOptions, ...options });
@@ -102,12 +106,12 @@ tg.expand();
 
 class TelegramWebApp {
     constructor() {
-        this.API_BASE_URL = 'http://localhost:8000/api';
+        this.API_BASE_URL = 'https://tg-bd.onrender.com/api';
         this.device_id = null;
         this.api = {
             init: async () => {
                 try {
-                    const response = await fetch(`${this.API_BASE_URL}/init`, {
+                    const response = await request(`${this.API_BASE_URL}/init`, {
                         method: 'POST'
                     });
                     if (!response.ok) {
@@ -127,11 +131,7 @@ class TelegramWebApp {
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
-                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}`);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return await response.json();
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}`);
                 } catch (error) {
                     console.error('Error getting profile:', error);
                     throw error;
@@ -143,17 +143,10 @@ class TelegramWebApp {
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
-                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}`, {
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}`, {
                         method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
                         body: JSON.stringify(profileData)
                     });
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return await response.json();
                 } catch (error) {
                     console.error('Error updating profile:', error);
                     throw error;
@@ -167,7 +160,10 @@ class TelegramWebApp {
                     }
                     const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/photo`, {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        headers: {
+                            'Origin': 'https://kileniass.github.io'
+                        }
                     });
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -184,12 +180,8 @@ class TelegramWebApp {
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
-                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/next`);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    const data = await response.json();
-                    return data.profile;
+                    const response = await request(`${this.API_BASE_URL}/users/${this.device_id}/next`);
+                    return response.profile;
                 } catch (error) {
                     console.error('Error getting next profile:', error);
                     throw error;
@@ -201,13 +193,9 @@ class TelegramWebApp {
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
-                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/like/${targetId}`, {
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/like/${targetId}`, {
                         method: 'POST'
                     });
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return await response.json();
                 } catch (error) {
                     console.error('Error liking profile:', error);
                     throw error;
@@ -219,13 +207,9 @@ class TelegramWebApp {
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
-                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/dislike/${targetId}`, {
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/dislike/${targetId}`, {
                         method: 'POST'
                     });
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return await response.json();
                 } catch (error) {
                     console.error('Error disliking profile:', error);
                     throw error;
@@ -237,11 +221,7 @@ class TelegramWebApp {
                     if (!this.device_id) {
                         throw new Error('Device ID not initialized');
                     }
-                    const response = await fetch(`${this.API_BASE_URL}/users/${this.device_id}/matches`);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return await response.json();
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/matches`);
                 } catch (error) {
                     console.error('Error getting matches:', error);
                     throw error;
@@ -250,6 +230,10 @@ class TelegramWebApp {
 
             getDeviceId: () => {
                 return this.device_id;
+            },
+
+            showNotification: (message, isError = false) => {
+                addNotification(message, isError);
             }
         };
     }
