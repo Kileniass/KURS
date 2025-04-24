@@ -37,8 +37,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Initialize user profile
         try {
-            const profile = await tgApp.api.initUser(deviceId);
-            console.log('User profile initialized');
+            // Сначала инициализируем пользователя
+            const initResponse = await tgApp.api.init();
+            console.log('User initialized:', initResponse);
+
+            // Затем получаем профиль
+            const profile = await tgApp.api.getProfile();
+            console.log('User profile:', profile);
+
+            if (!profile) {
+                // Если профиль не существует, перенаправляем на страницу создания профиля
+                window.location.href = '/profile-change.html';
+                return;
+            }
         } catch (error) {
             console.error('Error initializing user:', error);
             showError('Failed to initialize user profile');
@@ -47,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Load next profile
         try {
-            const nextProfile = await tgApp.api.getNextProfile(deviceId);
+            const nextProfile = await tgApp.api.getNextProfile();
             if (nextProfile) {
                 displayProfile(nextProfile);
             } else {
@@ -63,13 +74,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('likeButton').addEventListener('click', async () => {
             try {
                 const currentProfile = document.querySelector('.profile-card').dataset.profileId;
-                const result = await tgApp.api.likeProfile(deviceId, currentProfile);
+                const result = await tgApp.api.likeProfile(currentProfile);
                 
-                if (result.isMatch) {
+                if (result.match) {
                     showMatchNotification();
                 }
                 
-                const nextProfile = await tgApp.api.getNextProfile(deviceId);
+                const nextProfile = await tgApp.api.getNextProfile();
                 if (nextProfile) {
                     displayProfile(nextProfile);
                 } else {
@@ -84,9 +95,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('dislikeButton').addEventListener('click', async () => {
             try {
                 const currentProfile = document.querySelector('.profile-card').dataset.profileId;
-                await tgApp.api.dislikeProfile(deviceId, currentProfile);
+                await tgApp.api.dislikeProfile(currentProfile);
                 
-                const nextProfile = await tgApp.api.getNextProfile(deviceId);
+                const nextProfile = await tgApp.api.getNextProfile();
                 if (nextProfile) {
                     displayProfile(nextProfile);
                 } else {
