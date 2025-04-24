@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         resolve(window.tgApp);
                     } else if (attempts >= maxAttempts) {
                         console.warn('Telegram WebApp не найден после ' + maxAttempts + ' попыток');
-                        resolve(null); // Продолжаем без Telegram WebApp
+                        resolve(null);
                     } else {
                         setTimeout(checkTgApp, 500);
                     }
@@ -29,27 +29,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tgApp = await waitForTgApp();
         console.log('Статус инициализации tgApp:', tgApp ? 'успешно' : 'не найден');
 
-        // Generate or retrieve device ID
-        let deviceId = localStorage.getItem('device_id');
-        if (!deviceId) {
-            deviceId = crypto.randomUUID();
-            localStorage.setItem('device_id', deviceId);
-            console.log('Создан новый device_id:', deviceId);
-        } else {
-            console.log('Использован существующий device_id:', deviceId);
-        }
-
         // Initialize user profile
         try {
             console.log('Начало инициализации пользователя...');
             
-            if (!tgApp) {
-                throw new Error('Telegram WebApp не инициализирован');
-            }
-
             // Инициализируем пользователя
             const initResponse = await tgApp.api.init();
             console.log('Ответ инициализации:', initResponse);
+
+            if (!initResponse || !initResponse.device_id) {
+                throw new Error('Не удалось получить device_id');
+            }
+
+            // Сохраняем device_id
+            localStorage.setItem('device_id', initResponse.device_id);
 
             // Получаем профиль
             const profile = await tgApp.api.getProfile();
@@ -57,7 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!profile) {
                 console.log('Профиль не найден, перенаправление на создание...');
-                // Используем относительный путь
                 const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
                 window.location.href = baseUrl + 'profile-change.html';
                 return;
@@ -99,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const result = await tgApp.api.likeProfile(currentProfileId);
                 console.log('Результат лайка:', result);
                 
-                if (result.match) {
+                if (result && result.match) {
                     showMatchNotification();
                 }
                 
@@ -151,60 +143,65 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function displayProfile(profile) {
-    if (!profile) {
-        console.error('Профиль не определен');
+    if (!profile || typeof profile !== 'object') {
+        console.error('Некорректный формат профиля:', profile);
         displayNoMoreProfiles();
         return;
     }
 
     console.log('Отображение профиля:', profile);
 
-    // Обновляем фото профиля
-    const profilePhoto = document.getElementById('profilePhoto');
-    if (profilePhoto) {
-        if (profile.photo_url) {
-            profilePhoto.src = profile.photo_url.startsWith('http') 
-                ? profile.photo_url 
-                : `${STATIC_BASE_URL}${profile.photo_url}`;
-            profilePhoto.alt = `Фото ${profile.name}`;
-        } else {
-            profilePhoto.src = './image/placeholder_image.jpg';
-            profilePhoto.alt = 'Фото профиля отсутствует';
+    try {
+        // Обновляем фото профиля
+        const profilePhoto = document.getElementById('profilePhoto');
+        if (profilePhoto) {
+            if (profile.photo_url) {
+                profilePhoto.src = profile.photo_url.startsWith('http') 
+                    ? profile.photo_url 
+                    : `${STATIC_BASE_URL}${profile.photo_url}`;
+                profilePhoto.alt = `Фото ${profile.name}`;
+            } else {
+                profilePhoto.src = './image/placeholder_image.jpg';
+                profilePhoto.alt = 'Фото профиля отсутствует';
+            }
         }
-    }
 
-    // Обновляем имя
-    const nameElement = document.getElementById('profileName');
-    if (nameElement) {
-        nameElement.textContent = profile.name || 'Без имени';
-    }
+        // Обновляем имя
+        const nameElement = document.getElementById('profileName');
+        if (nameElement) {
+            nameElement.textContent = profile.name || 'Без имени';
+        }
 
-    // Обновляем описание
-    const aboutElement = document.getElementById('profileAbout');
-    if (aboutElement) {
-        aboutElement.textContent = profile.about || 'Нет описания';
-        aboutElement.style.display = profile.about ? 'block' : 'none';
-    }
+        // Обновляем описание
+        const aboutElement = document.getElementById('profileAbout');
+        if (aboutElement) {
+            aboutElement.textContent = profile.about || 'Нет описания';
+            aboutElement.style.display = profile.about ? 'block' : 'none';
+        }
 
-    // Обновляем информацию об автомобиле
-    const carElement = document.getElementById('profileCar');
-    if (carElement) {
-        carElement.textContent = profile.car || 'Автомобиль не указан';
-        carElement.style.display = profile.car ? 'block' : 'none';
-    }
+        // Обновляем информацию об автомобиле
+        const carElement = document.getElementById('profileCar');
+        if (carElement) {
+            carElement.textContent = profile.car || 'Автомобиль не указан';
+            carElement.style.display = profile.car ? 'block' : 'none';
+        }
 
-    // Сохраняем ID профиля для кнопок лайка/дизлайка
-    const likeButton = document.getElementById('likeButton');
-    const dislikeButton = document.getElementById('dislikeButton');
-    
-    if (likeButton) {
-        likeButton.dataset.profileId = profile.id;
-        likeButton.disabled = false;
-    }
-    
-    if (dislikeButton) {
-        dislikeButton.dataset.profileId = profile.id;
-        dislikeButton.disabled = false;
+        // Сохраняем ID профиля для кнопок лайка/дизлайка
+        const likeButton = document.getElementById('likeButton');
+        const dislikeButton = document.getElementById('dislikeButton');
+        
+        if (likeButton) {
+            likeButton.dataset.profileId = profile.id;
+            likeButton.disabled = false;
+        }
+        
+        if (dislikeButton) {
+            dislikeButton.dataset.profileId = profile.id;
+            dislikeButton.disabled = false;
+        }
+    } catch (error) {
+        console.error('Ошибка при отображении профиля:', error);
+        showError('Не удалось отобразить профиль');
     }
 }
 

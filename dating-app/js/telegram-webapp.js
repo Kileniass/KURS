@@ -87,6 +87,13 @@ async function request(url, options = {}) {
             }
         };
 
+        // Если есть тело запроса и оно не FormData, преобразуем в JSON
+        if (mergedOptions.body && !(mergedOptions.body instanceof FormData)) {
+            if (typeof mergedOptions.body === 'object') {
+                mergedOptions.body = JSON.stringify(mergedOptions.body);
+            }
+        }
+
         console.log('Итоговые параметры запроса:', mergedOptions);
 
         const response = await fetch(url, mergedOptions);
@@ -98,9 +105,16 @@ async function request(url, options = {}) {
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
-        const data = await response.json();
-        console.log('Получены данные:', data);
-        return data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            console.log('Получены данные:', data);
+            return data;
+        } else {
+            const text = await response.text();
+            console.log('Получен текстовый ответ:', text);
+            return text;
+        }
     } catch (error) {
         console.error('API Error:', error);
         throw error;
@@ -119,10 +133,7 @@ class TelegramWebApp {
                 try {
                     await this.initPromise;
                     const response = await request(`${this.API_BASE_URL}/init`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            device_id: this.device_id
-                        })
+                        method: 'POST'
                     });
                     
                     if (response && response.device_id) {
