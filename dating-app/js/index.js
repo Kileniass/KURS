@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const startTime = Date.now();
             
             const check = () => {
-                if (window.tgApp) {
+                if (window.tgApp && window.tgApp.isReady()) {
                     resolve(window.tgApp);
                 } else if (Date.now() - startTime >= timeout) {
                     reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));

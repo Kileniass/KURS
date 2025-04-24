@@ -96,14 +96,19 @@ async function request(url, options = {}) {
     }
 }
 
-// Инициализация приложения
-tg.ready();
-tg.expand();
-
 class TelegramWebApp {
     constructor() {
         this.API_BASE_URL = API_BASE_URL;
         this.device_id = localStorage.getItem('device_id');
+        this.isInitialized = false;
+
+        // Инициализируем Telegram WebApp
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            this.isInitialized = true;
+        }
+
         this.api = {
             init: async () => {
                 try {
@@ -269,6 +274,10 @@ class TelegramWebApp {
                 };
             }
         };
+    }
+
+    isReady() {
+        return this.isInitialized;
     }
 }
 
