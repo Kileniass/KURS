@@ -51,16 +51,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         tgApp = await waitForTgApp();
         console.log('tgApp инициализирован');
 
-        if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
-            throw new Error('Telegram WebApp не инициализирован корректно');
-        }
-
-        // Получаем telegram_id
-        const telegramId = tgApp.api.getTelegramId();
-        console.log('Получен telegram_id:', telegramId);
+        // Инициализируем пользователя
+        const user = await tgApp.api.init();
+        console.log('Пользователь инициализирован:', user);
 
         // Получаем список совпадений
         const matches = await tgApp.api.getMatches();
+        console.log('Получены совпадения:', matches);
         
         if (matches && matches.length > 0) {
             displayMatches(matches);
@@ -76,6 +73,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function displayMatches(matches) {
     const matchesContainer = document.querySelector('.matches-container');
+    if (!matchesContainer) return;
+    
     matchesContainer.innerHTML = '';
 
     matches.forEach(match => {
@@ -101,6 +100,8 @@ function displayMatches(matches) {
 
 function displayNoMatches() {
     const matchesContainer = document.querySelector('.matches-container');
+    if (!matchesContainer) return;
+
     matchesContainer.innerHTML = `
         <div class="no-matches">
             <h2>Пока нет совпадений</h2>
@@ -110,11 +111,16 @@ function displayNoMatches() {
 }
 
 function showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-notification';
-    errorDiv.innerHTML = `
-        <p>${message}</p>
-        <button onclick="this.parentElement.remove()">OK</button>
-    `;
-    document.body.appendChild(errorDiv);
+    console.error(message);
+    if (window.tgApp) {
+        window.tgApp.api.showNotification(message, true);
+    } else {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-notification';
+        errorDiv.innerHTML = `
+            <p>${message}</p>
+            <button onclick="this.parentElement.remove()">OK</button>
+        `;
+        document.body.appendChild(errorDiv);
+    }
 } 

@@ -20,7 +20,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-        console.log('Загрузка профиля...');
+        // Ждем инициализации tgApp
+        tgApp = await waitForTgApp();
+        console.log('tgApp инициализирован');
+
+        // Инициализируем пользователя
+        const user = await tgApp.api.init();
+        console.log('Пользователь инициализирован:', user);
         
         // Получаем профиль пользователя
         const profile = await tgApp.api.getProfile();
@@ -28,26 +34,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Заполняем данные профиля
         if (profile) {
-            document.getElementById('userName').textContent = profile.name || 'Не указано';
-            document.getElementById('userAge').textContent = profile.age ? `${profile.age} лет` : 'Не указан';
-            document.getElementById('userCar').textContent = profile.car || 'Не указан';
-            document.getElementById('userRegion').textContent = profile.region || 'Не указан';
-            document.getElementById('userAbout').textContent = profile.about || 'Нет описания';
-            
+            const userName = document.getElementById('userName');
+            const userAge = document.getElementById('userAge');
+            const userCar = document.getElementById('userCar');
+            const userRegion = document.getElementById('userRegion');
+            const userAbout = document.getElementById('userAbout');
             const userPhoto = document.getElementById('userPhoto');
-            if (profile.photo_url) {
-                userPhoto.src = profile.photo_url;
-                userPhoto.alt = `Фото ${profile.name}`;
-            } else {
-                userPhoto.src = '/image/default-profile.jpg';
-                userPhoto.alt = 'Фото профиля отсутствует';
+
+            if (userName) userName.textContent = profile.name || 'Не указано';
+            if (userAge) userAge.textContent = profile.age ? `${profile.age} лет` : 'Не указан';
+            if (userCar) userCar.textContent = profile.car || 'Не указан';
+            if (userRegion) userRegion.textContent = profile.region || 'Не указан';
+            if (userAbout) userAbout.textContent = profile.about || 'Нет описания';
+            
+            if (userPhoto) {
+                tgApp.api.setImageWithFallback(userPhoto, profile.photo_url);
             }
         }
 
         // Обработчик для кнопки редактирования
-        document.getElementById('editProfileButton').addEventListener('click', () => {
-            window.location.href = '/profile-change.html';
-        });
+        const editButton = document.getElementById('editProfileButton');
+        if (editButton) {
+            editButton.addEventListener('click', () => {
+                window.location.href = '/profile-change.html';
+            });
+        }
 
     } catch (error) {
         console.error('Ошибка при загрузке профиля:', error);
@@ -56,11 +67,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-notification';
-    errorDiv.innerHTML = `
-        <p>${message}</p>
-        <button onclick="this.parentElement.remove()">OK</button>
-    `;
-    document.body.appendChild(errorDiv);
+    console.error(message);
+    if (window.tgApp) {
+        window.tgApp.api.showNotification(message, true);
+    } else {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-notification';
+        errorDiv.innerHTML = `
+            <p>${message}</p>
+            <button onclick="this.parentElement.remove()">OK</button>
+        `;
+        document.body.appendChild(errorDiv);
+    }
 } 

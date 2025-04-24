@@ -29,20 +29,16 @@ async function showNextNotification() {
             console.error('Ошибка:', message);
         }
         
-        if (tg && tg.showAlert) {
+        if (tg && tg.showPopup) {
             try {
-                await tg.showAlert(message);
+                await tg.showPopup({
+                    message: message,
+                    buttons: [{ type: 'ok' }]
+                });
                 lastNotificationTime = Date.now();
             } catch (error) {
-                if (error.message === 'WebAppPopupOpened') {
-                    // Если попап уже открыт, ждем и пробуем снова
-                    notificationQueue.unshift({ message, isError });
-                    setTimeout(showNextNotification, MIN_NOTIFICATION_INTERVAL);
-                } else {
-                    console.error('Ошибка при показе уведомления:', error);
-                    // Используем обычный alert как запасной вариант
-                    alert(message);
-                }
+                console.error('Ошибка при показе уведомления:', error);
+                alert(message);
             }
         } else {
             alert(message);
@@ -75,7 +71,10 @@ async function request(url, options = {}) {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Origin': 'https://kileniass.github.io'
+                'Origin': 'https://kileniass.github.io',
+                'Access-Control-Allow-Origin': 'https://kileniass.github.io',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Accept, Origin'
             },
             credentials: 'include'
         };
@@ -97,150 +96,181 @@ async function request(url, options = {}) {
     }
 }
 
-// API методы
-const api = {
-    init: async () => {
-        try {
-            const response = await request(`${API_BASE_URL}/init`, {
-                method: 'POST'
-            });
-            return response;
-        } catch (error) {
-            console.error('Error initializing user:', error);
-            throw error;
-        }
-    },
-
-    getProfile: async () => {
-        try {
-            const deviceId = localStorage.getItem('device_id');
-            if (!deviceId) {
-                throw new Error('Device ID not found');
-            }
-            return await request(`${API_BASE_URL}/users/${deviceId}`);
-        } catch (error) {
-            console.error('Error getting profile:', error);
-            throw error;
-        }
-    },
-
-    updateProfile: async (profileData) => {
-        try {
-            const deviceId = localStorage.getItem('device_id');
-            if (!deviceId) {
-                throw new Error('Device ID not found');
-            }
-            return await request(`${API_BASE_URL}/users/${deviceId}`, {
-                method: 'PUT',
-                body: JSON.stringify(profileData)
-            });
-        } catch (error) {
-            console.error('Error updating profile:', error);
-            throw error;
-        }
-    },
-
-    uploadPhoto: async (formData) => {
-        try {
-            const deviceId = localStorage.getItem('device_id');
-            if (!deviceId) {
-                throw new Error('Device ID not found');
-            }
-            const response = await fetch(`${API_BASE_URL}/users/${deviceId}/photo`, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Origin': 'https://kileniass.github.io'
-                }
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('Error uploading photo:', error);
-            throw error;
-        }
-    },
-
-    getNextProfile: async () => {
-        try {
-            const deviceId = localStorage.getItem('device_id');
-            if (!deviceId) {
-                throw new Error('Device ID not found');
-            }
-            const response = await request(`${API_BASE_URL}/users/${deviceId}/next`);
-            return response.profile;
-        } catch (error) {
-            console.error('Error getting next profile:', error);
-            throw error;
-        }
-    },
-
-    likeProfile: async (targetId) => {
-        try {
-            const deviceId = localStorage.getItem('device_id');
-            if (!deviceId) {
-                throw new Error('Device ID not found');
-            }
-            return await request(`${API_BASE_URL}/users/${deviceId}/like/${targetId}`, {
-                method: 'POST'
-            });
-        } catch (error) {
-            console.error('Error liking profile:', error);
-            throw error;
-        }
-    },
-
-    dislikeProfile: async (targetId) => {
-        try {
-            const deviceId = localStorage.getItem('device_id');
-            if (!deviceId) {
-                throw new Error('Device ID not found');
-            }
-            return await request(`${API_BASE_URL}/users/${deviceId}/dislike/${targetId}`, {
-                method: 'POST'
-            });
-        } catch (error) {
-            console.error('Error disliking profile:', error);
-            throw error;
-        }
-    },
-
-    getMatches: async () => {
-        try {
-            const deviceId = localStorage.getItem('device_id');
-            if (!deviceId) {
-                throw new Error('Device ID not found');
-            }
-            return await request(`${API_BASE_URL}/users/${deviceId}/matches`);
-        } catch (error) {
-            console.error('Error getting matches:', error);
-            throw error;
-        }
-    },
-
-    showNotification: (message, isError = false) => {
-        if (tg && tg.showPopup) {
-            tg.showPopup({
-                title: isError ? 'Ошибка' : 'Уведомление',
-                message: message,
-                buttons: [{ type: 'ok' }]
-            });
-        } else {
-            alert(message);
-        }
-    }
-};
-
 // Инициализация приложения
 tg.ready();
 tg.expand();
 
-// Экспорт
-window.tgApp = {
-    tg,
-    api,
-    API_BASE_URL,
-    STATIC_BASE_URL
-}; 
+class TelegramWebApp {
+    constructor() {
+        this.API_BASE_URL = API_BASE_URL;
+        this.device_id = localStorage.getItem('device_id');
+        this.api = {
+            init: async () => {
+                try {
+                    if (!this.device_id) {
+                        const response = await request(`${this.API_BASE_URL}/init`, {
+                            method: 'POST'
+                        });
+                        this.device_id = response.device_id;
+                        localStorage.setItem('device_id', this.device_id);
+                    }
+                    return { device_id: this.device_id };
+                } catch (error) {
+                    console.error('Error initializing:', error);
+                    throw error;
+                }
+            },
+
+            getProfile: async () => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}`);
+                } catch (error) {
+                    if (error.message.includes('404')) {
+                        return null; // Профиль не найден
+                    }
+                    throw error;
+                }
+            },
+
+            createProfile: async (profileData) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users`, {
+                        method: 'POST',
+                        body: JSON.stringify({ ...profileData, device_id: this.device_id })
+                    });
+                } catch (error) {
+                    console.error('Error creating profile:', error);
+                    throw error;
+                }
+            },
+
+            updateProfile: async (profileData) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(profileData)
+                    });
+                } catch (error) {
+                    console.error('Error updating profile:', error);
+                    throw error;
+                }
+            },
+
+            uploadPhoto: async (formData) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/photo`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } catch (error) {
+                    console.error('Error uploading photo:', error);
+                    throw error;
+                }
+            },
+
+            getNextProfile: async () => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/next`);
+                } catch (error) {
+                    console.error('Error getting next profile:', error);
+                    throw error;
+                }
+            },
+
+            likeProfile: async (targetId) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/like/${targetId}`, {
+                        method: 'POST'
+                    });
+                } catch (error) {
+                    console.error('Error liking profile:', error);
+                    throw error;
+                }
+            },
+
+            dislikeProfile: async (targetId) => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/dislike/${targetId}`, {
+                        method: 'POST'
+                    });
+                } catch (error) {
+                    console.error('Error disliking profile:', error);
+                    throw error;
+                }
+            },
+
+            getMatches: async () => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/matches`);
+                } catch (error) {
+                    console.error('Error getting matches:', error);
+                    throw error;
+                }
+            },
+
+            getLikes: async () => {
+                try {
+                    if (!this.device_id) {
+                        throw new Error('Device ID not initialized');
+                    }
+                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/likes`);
+                } catch (error) {
+                    console.error('Error getting likes:', error);
+                    throw error;
+                }
+            },
+
+            getDeviceId: () => {
+                return this.device_id;
+            },
+
+            showNotification: (message, isError = false) => {
+                addNotification(message, isError);
+            },
+
+            setImageWithFallback: (imgElement, photoUrl) => {
+                if (!photoUrl) {
+                    imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
+                    return;
+                }
+
+                if (photoUrl.startsWith('http')) {
+                    imgElement.src = photoUrl;
+                } else {
+                    imgElement.src = `${STATIC_BASE_URL}/${photoUrl}`;
+                }
+
+                imgElement.onerror = () => {
+                    imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
+                };
+            }
+        };
+    }
+}
+
+// Создаем глобальный экземпляр приложения
+window.tgApp = new TelegramWebApp(); 
