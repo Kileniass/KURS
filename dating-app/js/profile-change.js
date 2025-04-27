@@ -1,250 +1,155 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const API_URL = 'https://tg-bd.onrender.com'; // Базовый URL API
-    let deviceId = localStorage.getItem('device_id'); // Получаем device_id из localStorage
+    const form = document.getElementById('profileForm');
+    const saveButton = document.getElementById('saveButton');
+    const photoInput = document.getElementById('car-image');
+    const photoPreview = document.getElementById('carImagePreview');
+    let photoFile = null;
+    let currentUser = null;
 
-    if (!deviceId) {
-        deviceId = Math.floor(Math.random() * (999999999 - 100000000 + 1)) + 100000000;
-        localStorage.setItem('device_id', deviceId);
+    // Базовые пути для изображений
+    const IMAGES_BASE_PATH = '/image';
+    const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
+
+    // Функция для безопасной загрузки изображений
+    function setImageWithFallback(imgElement, src, fallbackSrc = DEFAULT_PROFILE_IMAGE) {
+        imgElement.onerror = () => {
+            console.warn(`Ошибка загрузки изображения: ${src}, используем запасное`);
+            imgElement.src = fallbackSrc;
+            imgElement.onerror = null; // Убираем обработчик чтобы избежать рекурсии
+        };
+        imgElement.src = src;
     }
 
-    // Функция ожидания инициализации tgApp
-    async function waitForTgApp(timeout = 5000) {
-        return new Promise((resolve, reject) => {
-            const startTime = Date.now();
+    // Функция для показа уведомлений
+    function showNotification(message, isError = false) {
+        tgApp.api.showNotification(message, isError);
+    }
 
-            const check = () => {
-                if (window.tgApp) {
-                    resolve(window.tgApp);
-                } else if (Date.now() - startTime >= timeout) {
-                    reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));
-                } else {
-                    setTimeout(check, 100);
-                }
+    // Инициализация пользователя
+    async function initUser() {
+        try {
+            // Получаем telegram_id
+            const telegramId = tgApp.api.getTelegramId();
+            console.log('Получен telegram_id:', telegramId);
+            
+            // Инициализируем пользователя на сервере
+            currentUser = await tgApp.api.initUser(telegramId);
+            console.log('Пользователь инициализирован:', currentUser);
+            
+            // Заполняем форму данными пользователя
+            if (currentUser) {
+                document.getElementById('name').value = currentUser.name || '';
+                document.getElementById('age').value = currentUser.age || '';
+                document.getElementById('bio').value = currentUser.about || '';
+                document.getElementById('car-info').value = currentUser.car || '';
+                document.getElementById('region').value = currentUser.region || '';
+                
+                // Устанавливаем фото профиля
+                setImageWithFallback(photoPreview, currentUser.photo_url);
+            }
+        } catch (error) {
+            console.error('Ошибка при инициализации пользователя:', error);
+            showNotification('Ошибка при инициализации пользователя: ' + error.message, true);
+        }
+    }
+
+    // Предпросмотр фото
+    photoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Проверяем размер файла (не более 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showNotification('Размер файла не должен превышать 5MB', true);
+                return;
+            }
+            
+            // Проверяем тип файла
+            if (!file.type.startsWith('image/')) {
+                showNotification('Пожалуйста, выберите изображение', true);
+                return;
+            }
+            
+            photoFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setImageWithFallback(photoPreview, e.target.result);
             };
-            check();
-        });
-    }
-
-    try {
-        // Ждем инициализации tgApp
-        await waitForTgApp();
-        console.log('tgApp инициализирован');
-
-        // Получаем ссылки на элементы формы
-        const nameInput = document.getElementById('nameInput');
-        const ageInput = document.getElementById('ageInput');
-        const carInput = document.getElementById('carInput');
-        const regionInput = document.getElementById('regionInput');
-        const aboutInput = document.getElementById('aboutInput');
-        const profilePhoto = document.getElementById('photoPreview');
-        const photoInput = document.getElementById('photoInput');
-        const form = document.getElementById('profileForm');
-        const saveButton = document.getElementById('saveButton');
-        const backButton = document.getElementById('backButton');
-
-        // Проверяем наличие всех необходимых элементов
-        if (!nameInput || !ageInput || !carInput || !regionInput || !aboutInput || !profilePhoto || !photoInput || !form) {
-            throw new Error('Не найдены все необходимые элементы формы');
+            reader.readAsDataURL(file);
         }
+    });
 
-        // Создаем список элементов страницы, при взаимодействии с которыми нужно инициализировать пользователя
-        const interactiveElements = [
-            nameInput,
-            ageInput,
-            carInput,
-            regionInput,
-            aboutInput,
-            photoInput,
-            saveButton,
-            backButton,
-            profilePhoto
-        ].filter(Boolean);
-
-        // Флаг, указывающий, был ли уже инициализирован пользователь
-        let isUserInitialized = false;
-
-        // Функция для инициализации пользователя
-        async function initializeUser() {
-            if (isUserInitialized) return;
-            isUserInitialized = true;
-
-            try {
-                // Инициализируем пользователя через /api/init
-                const initResponse = await fetch(`${API_URL}/api/init`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ device_id: deviceId }),
-                });
-
-                if (!initResponse.ok) {
-                    throw new Error('Ошибка инициализации пользователя');
-                }
-
-                console.log('Пользователь инициализирован');
-
-                try {
-                    // Получаем текущий профиль через /api/users/{device_id}
-                    const profileResponse = await fetch(`${API_URL}/api/users/${deviceId}`);
-                    if (!profileResponse.ok && profileResponse.status !== 404) {
-                        throw new Error('Ошибка загрузки профиля');
-                    }
-
-                    const profile = await profileResponse.json();
-
-                    // Если профиль не найден, создаем новый
-                    if (!profile) {
-                        console.log('Профиль не найден, создаем новый...');
-                        const defaultProfile = {
-                            name: '',
-                            age: null,
-                            car: '',
-                            region: '',
-                            about: '',
-                        };
-
-                        await fetch(`${API_URL}/api/users/${deviceId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(defaultProfile),
-                        });
-                    }
-
-                    // Заполняем форму данными профиля
-                    if (profile) {
-                        nameInput.value = profile.name || '';
-                        ageInput.value = profile.age || '';
-                        carInput.value = profile.car || '';
-                        regionInput.value = profile.region || '';
-                        aboutInput.value = profile.about || '';
-
-                        if (profilePhoto) {
-                            profilePhoto.src = profile.photo_url || './image/hero-image.png';
-                        }
-                    }
-
-                    // Удаляем обработчики событий для инициализации, так как она уже выполнена
-                    interactiveElements.forEach(element => {
-                        element.removeEventListener('focus', initializeUser);
-                        element.removeEventListener('click', initializeUser);
-                    });
-                } catch (error) {
-                    console.error('Ошибка при загрузке профиля:', error);
-                    showError('Не удалось загрузить профиль');
-                }
-            } catch (error) {
-                console.error('Ошибка при инициализации пользователя:', error);
-                showError('Не удалось инициализировать пользователя');
+    // Обработка сохранения профиля
+    saveButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        try {
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
             }
-        }
 
-        // Добавляем обработчики событий для всех интерактивных элементов
-        interactiveElements.forEach(element => {
-            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                element.addEventListener('focus', initializeUser);
-            } else {
-                element.addEventListener('click', initializeUser);
+            saveButton.disabled = true;
+            
+            // Получаем telegram_id
+            const telegramId = tgApp.api.getTelegramId();
+            
+            // Проверяем обязательные поля
+            const name = document.getElementById('name').value.trim();
+            const age = parseInt(document.getElementById('age').value);
+            const car = document.getElementById('car-info').value.trim();
+            const region = document.getElementById('region').value.trim();
+            const about = document.getElementById('bio').value.trim();
+
+            if (!name || !age || !car || !region) {
+                throw new Error('Пожалуйста, заполните все обязательные поля');
             }
-        });
 
-        // Обработчик загрузки фото
-        photoInput.addEventListener('change', async (e) => {
-            await initializeUser(); // Убедимся, что пользователь инициализирован
-
-            const file = e.target.files[0];
-            if (file) {
+            if (age < 18 || age > 100) {
+                throw new Error('Возраст должен быть от 18 до 100 лет');
+            }
+            
+            // Создаем объект с данными профиля
+            const profileData = {
+                telegram_id: telegramId,
+                name,
+                age,
+                car,
+                region,
+                about
+            };
+            
+            // Если есть новое фото, загружаем его
+            if (photoFile) {
                 try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    const uploadResponse = await fetch(`${API_URL}/api/users/${deviceId}/photo`, {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!uploadResponse.ok) {
-                        throw new Error('Ошибка загрузки фото');
-                    }
-
-                    const result = await uploadResponse.json();
-                    if (result && result.photo_url) {
-                        profilePhoto.src = result.photo_url;
-                        showSuccess('Фото успешно загружено');
+                    const uploadResult = await tgApp.api.uploadPhoto(photoFile, telegramId);
+                    if (uploadResult && uploadResult.photo_url) {
+                        profileData.photo_url = uploadResult.photo_url;
                     }
                 } catch (error) {
                     console.error('Ошибка при загрузке фото:', error);
-                    showError('Не удалось загрузить фото');
+                    showNotification('Ошибка при загрузке фото. Профиль будет сохранен без фото.', true);
                 }
             }
-        });
+            
+            // Обновляем профиль пользователя
+            const updatedUser = await tgApp.api.createProfile(profileData);
+            console.log('Профиль обновлен:', updatedUser);
+            
+            showNotification('Профиль успешно сохранен');
+            
+            // Добавляем небольшую задержку перед редиректом
+            setTimeout(() => {
+                window.location.href = 'profile.html';
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Ошибка при сохранении профиля:', error);
+            showNotification(error.message || 'Произошла ошибка при сохранении профиля', true);
+        } finally {
+            saveButton.disabled = false;
+        }
+    });
 
-        // Обработчик отправки формы
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            await initializeUser(); // Убедимся, что пользователь инициализирован
-
-            try {
-                const formData = {
-                    name: nameInput.value.trim(),
-                    age: parseInt(ageInput.value) || null,
-                    car: carInput.value.trim(),
-                    region: regionInput.value.trim(),
-                    about: aboutInput.value.trim(),
-                };
-
-                const updateResponse = await fetch(`${API_URL}/api/users/${deviceId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData),
-                });
-
-                if (!updateResponse.ok) {
-                    throw new Error('Ошибка обновления профиля');
-                }
-
-                showSuccess('Профиль успешно обновлен');
-
-                // Возвращаемся на страницу профиля
-                setTimeout(() => {
-                    window.location.href = './profile.html';
-                }, 1500);
-            } catch (error) {
-                console.error('Ошибка при обновлении профиля:', error);
-                showError('Не удалось обновить профиль');
-            }
-        });
-
-    } catch (error) {
-        console.error('Ошибка при инициализации:', error);
-        showError('Не удалось инициализировать приложение');
-    }
-});
-
-function showSuccess(message) {
-    if (window.tgApp) {
-        window.tgApp.api.showNotification(message, false);
-    } else {
-        const successDiv = document.createElement('div');
-        successDiv.className = 'success-notification';
-        successDiv.innerHTML = `
-            <p>${message}</p>
-            <button onclick="this.parentElement.remove()">OK</button>
-        `;
-        document.body.appendChild(successDiv);
-    }
-}
-
-function showError(message) {
-    console.error(message);
-    if (window.tgApp) {
-        window.tgApp.api.showNotification(message, true);
-    } else {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-notification';
-        errorDiv.innerHTML = `
-            <p>${message}</p>
-            <button onclick="this.parentElement.remove()">OK</button>
-        `;
-        document.body.appendChild(errorDiv);
-    }
-}
+    // Инициализируем пользователя при загрузке страницы
+    await initUser();
+}); 

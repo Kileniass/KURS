@@ -1,41 +1,58 @@
-import { getUserProfile } from './telegram-webapp.js';
-
-// Получаем элементы DOM
-const myPhoto = document.getElementById('my-photo');
-const myName = document.getElementById('my-name');
-const myAge = document.getElementById('my-age');
-const myCity = document.getElementById('my-city');
-
-// Функция загрузки профиля
-async function loadMyProfile() {
-  try {
-    const profile = await getUserProfile();
-
-    // Проверяем, что профиль существует и содержит данные
-    if (profile) {
-      const { photo_url, name, age, city } = profile;
-
-      // Заполняем данные профиля
-      myPhoto.src = photo_url || './image/hero-image.png'; // Если фото нет, используем дефолтное
-      myName.textContent = name || 'Имя не указано';
-      myAge.textContent = age ? `${age} лет` : 'Возраст не указан';
-      myCity.textContent = city || 'Город не указан';
-    } else {
-      // Если профиль пустой или не найден
-      myPhoto.src = './image/hero-image.png';
-      myName.textContent = 'Анкета не найдена';
-      myAge.textContent = '';
-      myCity.textContent = '';
+document.addEventListener('DOMContentLoaded', async () => {
+    const editButton = document.getElementById('editProfile');
+    
+    // Загрузка данных профиля
+    async function loadProfile() {
+        try {
+            // Получаем telegram_id из Telegram WebApp
+            const telegramId = tgApp.tg.initDataUnsafe.user.id.toString();
+            
+            // Загружаем данные профиля
+            const profile = await tgApp.api.getProfile(telegramId);
+            console.log('Profile loaded:', profile);
+            
+            if (!profile) {
+                throw new Error('Профиль не найден');
+            }
+            
+            // Заполняем данные профиля
+            const profilePhoto = document.getElementById('profilePhoto');
+            const profileName = document.getElementById('profileName');
+            const profileAbout = document.getElementById('profileAbout');
+            const profileCar = document.getElementById('profileCar');
+            
+            if (profilePhoto) profilePhoto.src = profile.photo_url || 'image/placeholder_image.jpg';
+            if (profileName) profileName.textContent = `${profile.name}, ${profile.age}`;
+            if (profileAbout) profileAbout.textContent = profile.about || 'Нет описания';
+            if (profileCar) profileCar.textContent = profile.car || 'Не указано';
+            
+        } catch (error) {
+            console.error('Error loading profile:', error);
+            tgApp.tg.showAlert('Ошибка при загрузке профиля');
+            
+            // Показываем сообщение об ошибке
+            const profileName = document.getElementById('profileName');
+            const profileAbout = document.getElementById('profileAbout');
+            const profileCar = document.getElementById('profileCar');
+            
+            if (profileName) profileName.textContent = 'Ошибка загрузки';
+            if (profileAbout) profileAbout.textContent = 'Не удалось загрузить данные профиля';
+            if (profileCar) profileCar.textContent = 'Ошибка';
+            
+            // Перенаправляем на страницу создания профиля, если профиль не найден
+            if (error.message.includes('404')) {
+                window.location.href = 'profile-change.html';
+            }
+        }
     }
-  } catch (error) {
-    console.error('Ошибка загрузки своей анкеты:', error);
-    // В случае ошибки показываем сообщение пользователю
-    myPhoto.src = './image/hero-image.png';
-    myName.textContent = 'Ошибка загрузки анкеты';
-    myAge.textContent = '';
-    myCity.textContent = '';
-  }
-}
-
-// Загрузка анкеты при открытии страницы
-loadMyProfile();
+    
+    // Обработчик кнопки редактирования
+    if (editButton) {
+        editButton.addEventListener('click', () => {
+            window.location.href = 'profile-change.html';
+        });
+    }
+    
+    // Загружаем профиль при загрузке страницы
+    await loadProfile();
+}); 

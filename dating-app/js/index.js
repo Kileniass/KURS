@@ -1,101 +1,118 @@
-const API_URL = 'https://tg-bd.onrender.com'; // Базовый URL API
+document.addEventListener('DOMContentLoaded', async () => {
+    const likeBtn = document.getElementById('likeBtn');
+    const dislikeBtn = document.getElementById('dislikeBtn');
+    let currentProfile = null;
+    let currentUserId = null;
 
-// Функция генерации device_id
-function getDeviceId() {
-  let deviceId = localStorage.getItem('device_id');
-  if (!deviceId) {
-    deviceId = Math.floor(Math.random() * (999999999 - 100000000 + 1)) + 100000000;
-    localStorage.setItem('device_id', deviceId);
-  }
-  return deviceId;
-}
+    // Устанавливаем текст кнопок сразу
+    likeBtn.innerHTML = 'Лайк';
+    dislikeBtn.innerHTML = 'Дизлайк';
 
-const deviceId = getDeviceId(); // Используем device_id вместо telegram_id
+    // Базовые пути для изображений
+    const IMAGES_BASE_PATH = '/image';
+    const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
 
-const profileImage = document.getElementById('profile-image');
-const profileName = document.getElementById('profile-name');
-const profileAge = document.getElementById('profile-age');
-const profileCity = document.getElementById('profile-city');
-
-const likeButton = document.getElementById('like-button');
-const dislikeButton = document.getElementById('dislike-button');
-
-let currentProfile = null;
-
-// Загрузить следующий профиль
-async function loadNextProfile() {
-  try {
-    const response = await fetch(`${API_URL}/api/users/${deviceId}/next`);
-    if (!response.ok) {
-      throw new Error('Ошибка загрузки профиля');
+    // Функция для безопасной загрузки изображений
+    function setImageWithFallback(imgElement, src, fallbackSrc = DEFAULT_PROFILE_IMAGE) {
+        if (!imgElement) return;
+        
+        imgElement.onerror = () => {
+            console.warn(`Ошибка загрузки изображения: ${src}, используем запасное`);
+            imgElement.src = fallbackSrc;
+            imgElement.onerror = null; // Убираем обработчик чтобы избежать рекурсии
+        };
+        imgElement.src = src || fallbackSrc;
     }
 
-    const profile = await response.json();
-    currentProfile = profile;
-
-    if (profile) {
-      profileImage.src = profile.photo_url || './image/hero-image.png';
-      profileName.textContent = profile.name || 'Без имени';
-      profileAge.textContent = profile.age ? `${profile.age} лет` : 'Возраст не указан';
-      profileCity.textContent = profile.city || 'Город не указан';
-    } else {
-      profileImage.src = '';
-      profileName.textContent = 'Профили закончились';
-      profileAge.textContent = '';
-      profileCity.textContent = '';
+    // Инициализация пользователя
+    async function initUser() {
+        try {
+            // Получаем telegram_id из Telegram WebApp
+            const telegramId = tgApp.api.getTelegramId();
+            
+            // Инициализируем пользователя на сервере
+            const user = await tgApp.api.initUser(telegramId);
+            currentUserId = telegramId;
+            console.log('User initialized:', user);
+            
+            // Загружаем первый профиль
+            await loadNextProfile();
+        } catch (error) {
+            console.error('Error initializing user:', error);
+            tgApp.api.showNotification('Ошибка при инициализации пользователя');
+        }
     }
-  } catch (error) {
-    console.error('Ошибка при загрузке профиля:', error);
-  }
-}
 
-// Обработчик лайка
-likeButton.addEventListener('click', async () => {
-  if (!currentProfile) return;
-  try {
-    const targetId = currentProfile.id; // Предполагается, что в профиле есть поле id
-    const likeResponse = await fetch(`${API_URL}/api/users/${deviceId}/like/${targetId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    // Загрузка следующего профиля
+    async function loadNextProfile() {
+        try {
+            const profile = await tgApp.api.getNextProfile(currentUserId);
+            
+            if (!profile) {
+                setImageWithFallback(
+                    document.getElementById('profilePhoto'),
+                    DEFAULT_PROFILE_IMAGE
+                );
+                document.getElementById('profileName').textContent = 'Нет доступных профилей';
+                document.getElementById('profileAbout').textContent = 'Попробуйте позже';
+                document.getElementById('profileCar').textContent = '';
+                return;
+            }
+            
+            currentProfile = profile;
+            
+            // Заполняем данные профиля
+            setImageWithFallback(
+                document.getElementById('profilePhoto'),
+                currentProfile.photo_url || DEFAULT_PROFILE_IMAGE
+            );
+            document.getElementById('profileName').textContent = `${currentProfile.name}, ${currentProfile.age}`;
+            document.getElementById('profileAbout').textContent = currentProfile.about || 'Нет описания';
+            document.getElementById('profileCar').textContent = currentProfile.car || 'Не указано';
+            
+            // Обновляем текст кнопок
+            likeBtn.innerHTML = 'Лайк';
+            dislikeBtn.innerHTML = 'Дизлайк';
+            
+        } catch (error) {
+            console.error('Error loading profile:', error);
+            tgApp.api.showNotification('Ошибка при загрузке профиля');
+        }
+    }
+
+    // Обработчик кнопки лайка
+    likeBtn.addEventListener('click', async () => {
+        if (!currentProfile) return;
+        
+        try {
+            const result = await tgApp.api.likeProfile(currentProfile.telegram_id, currentUserId);
+            
+            if (result.is_match) {
+                tgApp.api.showNotification('У вас новое совпадение!');
+            } else {
+                tgApp.api.showNotification('Профиль понравился!');
+            }
+            
+            await loadNextProfile();
+        } catch (error) {
+            console.error('Error liking profile:', error);
+            tgApp.api.showNotification('Ошибка при отправке лайка');
+        }
     });
 
-    if (!likeResponse.ok) {
-      throw new Error('Ошибка отправки лайка');
-    }
-
-    const result = await likeResponse.json();
-    if (result.match) {
-      alert('У вас новый мэтч!'); // Можно заменить на уведомление
-    } else {
-      alert('Лайк отправлен!');
-    }
-
-    await loadNextProfile();
-  } catch (error) {
-    console.error('Ошибка при лайке:', error);
-  }
-});
-
-// Обработчик дизлайка
-dislikeButton.addEventListener('click', async () => {
-  if (!currentProfile) return;
-  try {
-    const targetId = currentProfile.id; // Предполагается, что в профиле есть поле id
-    const dislikeResponse = await fetch(`${API_URL}/api/users/${deviceId}/dislike/${targetId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    // Обработчик кнопки дизлайка
+    dislikeBtn.addEventListener('click', async () => {
+        if (!currentProfile) return;
+        
+        try {
+            await tgApp.api.dislikeProfile(currentProfile.telegram_id, currentUserId);
+            await loadNextProfile();
+        } catch (error) {
+            console.error('Error disliking profile:', error);
+            tgApp.api.showNotification('Ошибка при отправке дизлайка');
+        }
     });
 
-    if (!dislikeResponse.ok) {
-      throw new Error('Ошибка отправки дизлайка');
-    }
-
-    alert('Дизлайк отправлен');
-    await loadNextProfile();
-  } catch (error) {
-    console.error('Ошибка при дизлайке:', error);
-  }
-});
-
-// Первая загрузка страницы
-loadNextProfile();
+    // Инициализируем пользователя при загрузке страницы
+    await initUser();
+}); 
