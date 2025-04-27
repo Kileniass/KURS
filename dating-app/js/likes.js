@@ -1,156 +1,57 @@
-// Инициализация Telegram WebApp
-const tg = window.Telegram.WebApp;
+const API_URL = 'https://tg-bd.onrender.com'; // Базовый URL API
 
-// Базовый путь к изображениям
-const IMAGES_BASE_PATH = 'https://tg-bd.onrender.com/static';
-
-// Функция для установки изображения с запасным вариантом
-function setImageWithFallback(imgElement, photoUrl) {
-    if (!photoUrl) {
-        imgElement.src = `${IMAGES_BASE_PATH}/hero-image.jpg`;
-        return;
-    }
-
-    // Проверяем, является ли URL абсолютным
-    if (photoUrl.startsWith('http')) {
-        imgElement.src = photoUrl;
-    } else {
-        // Если URL относительный, добавляем базовый путь
-        imgElement.src = `${IMAGES_BASE_PATH}/${photoUrl}`;
-    }
-
-    // Обработка ошибок загрузки изображения
-    imgElement.onerror = () => {
-        imgElement.src = `${IMAGES_BASE_PATH}/hero-image.jpg`;
-    };
+// Получаем device_id из localStorage
+function getDeviceId() {
+  let deviceId = localStorage.getItem('device_id');
+  if (!deviceId) {
+    deviceId = Math.floor(Math.random() * (999999999 - 100000000 + 1)) + 100000000;
+    localStorage.setItem('device_id', deviceId);
+  }
+  return deviceId;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    let tgApp = null;
+const deviceId = getDeviceId(); // Используем device_id вместо telegram_id
 
-    // Функция ожидания инициализации tgApp
-    async function waitForTgApp(timeout = 5000) {
-        return new Promise((resolve, reject) => {
-            const startTime = Date.now();
-            
-            const check = () => {
-                if (window.tgApp) {
-                    resolve(window.tgApp);
-                } else if (Date.now() - startTime >= timeout) {
-                    reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));
-                } else {
-                    setTimeout(check, 100);
-                }
-            };
-            check();
-        });
+const matchesContainer = document.getElementById('matches-container');
+
+async function loadMatches() {
+  try {
+    // Загружаем совпадения через новый API
+    const response = await fetch(`${API_URL}/api/users/${deviceId}/matches`);
+    if (!response.ok) {
+      throw new Error('Ошибка загрузки совпадений');
     }
 
-    try {
-        // Ждем инициализации tgApp
-        tgApp = await waitForTgApp();
-        console.log('tgApp инициализирован');
+    const matches = await response.json();
 
-        // Создаем список элементов страницы, при взаимодействии с которыми нужно инициализировать пользователя
-        const interactiveElements = [
-            document.getElementById('backButton'),
-            document.querySelector('.matches-container')
-        ].filter(Boolean);
+    matchesContainer.innerHTML = ''; // Очищаем контейнер перед загрузкой новых данных
 
-        // Флаг, указывающий, был ли уже инициализирован пользователь
-        let isUserInitialized = false;
-
-        // Функция для инициализации пользователя
-        async function initializeUser() {
-            if (isUserInitialized) return;
-            isUserInitialized = true;
-
-            try {
-                // Инициализируем пользователя
-                const user = await tgApp.api.init();
-                console.log('Пользователь инициализирован:', user);
-
-                // Получаем список совпадений
-                const matches = await tgApp.api.getMatches();
-                console.log('Получены совпадения:', matches);
-                
-                if (matches && matches.length > 0) {
-                    displayMatches(matches);
-                } else {
-                    displayNoMatches();
-                }
-
-                // Удаляем обработчики событий для инициализации, так как она уже выполнена
-                interactiveElements.forEach(element => {
-                    element.removeEventListener('click', initializeUser);
-                });
-            } catch (error) {
-                console.error('Error loading matches:', error);
-                showError('Не удалось загрузить список совпадений');
-            }
-        }
-
-        // Добавляем обработчики событий для всех интерактивных элементов
-        interactiveElements.forEach(element => {
-            element.addEventListener('click', initializeUser);
-        });
-
-    } catch (error) {
-        console.error('Error initializing page:', error);
-        showError('Не удалось инициализировать страницу');
+    if (matches.length === 0) {
+      matchesContainer.innerHTML = '<p>У вас пока нет совпадений</p>';
+      return;
     }
-});
 
-function displayMatches(matches) {
-    const matchesContainer = document.querySelector('.matches-container');
-    if (!matchesContainer) return;
-    
-    matchesContainer.innerHTML = '';
-
+    // Создаём карточки для каждого совпадения
     matches.forEach(match => {
-        const matchCard = document.createElement('div');
-        matchCard.className = 'match-card';
-        matchCard.innerHTML = `
-            <div class="match-photo">
-                <img src="${match.photo_url || '/image/default-profile.jpg'}" 
-                     alt="Фото ${match.name || 'пользователя'}"
-                     onerror="this.src='/image/default-profile.jpg'">
-            </div>
-            <div class="match-info">
-                <h3>${match.name || 'Без имени'}</h3>
-                <p class="age">${match.age ? `${match.age} лет` : 'Возраст не указан'}</p>
-                <p class="car">${match.car || 'Автомобиль не указан'}</p>
-                <p class="region">${match.region || 'Регион не указан'}</p>
-                <p class="about">${match.about || 'Нет описания'}</p>
-            </div>
-        `;
-        matchesContainer.appendChild(matchCard);
-    });
-}
+      const matchCard = document.createElement('div');
+      matchCard.className = 'match-card'; // Стилизация карточки через CSS
 
-function displayNoMatches() {
-    const matchesContainer = document.querySelector('.matches-container');
-    if (!matchesContainer) return;
-
-    matchesContainer.innerHTML = `
-        <div class="no-matches">
-            <h2>Пока нет совпадений</h2>
-            <p>Продолжайте искать и ставить лайки, чтобы найти единомышленников</p>
+      matchCard.innerHTML = `
+        <img src="${match.photo_url || './image/hero-image.png'}" alt="Фото" class="match-photo">
+        <div class="match-info">
+          <h3>${match.name || 'Без имени'}, ${match.age ? `${match.age} лет` : 'Возраст не указан'}</h3>
+          <p>${match.city || 'Город не указан'}</p>
         </div>
-    `;
+      `;
+
+      matchesContainer.appendChild(matchCard);
+    });
+
+  } catch (error) {
+    console.error('Ошибка загрузки совпадений:', error);
+    matchesContainer.innerHTML = '<p>Произошла ошибка при загрузке совпадений</p>';
+  }
 }
 
-function showError(message) {
-    console.error(message);
-    if (window.tgApp) {
-        window.tgApp.api.showNotification(message, true);
-    } else {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-notification';
-        errorDiv.innerHTML = `
-            <p>${message}</p>
-            <button onclick="this.parentElement.remove()">OK</button>
-        `;
-        document.body.appendChild(errorDiv);
-    }
-} 
+// Загрузка совпадений при открытии страницы
+loadMatches();

@@ -1,358 +1,57 @@
-// Инициализация Telegram WebApp
-const tg = window.Telegram?.WebApp;
+const API_URL = 'https://tg-bd.onrender.com';
 
-// Базовые пути
-const API_BASE_URL = 'https://tg-bd.onrender.com/api';
-const STATIC_BASE_URL = 'https://tg-bd.onrender.com/static';
-
-// Очередь уведомлений
-let notificationQueue = [];
-let isShowingNotification = false;
-let lastNotificationTime = 0;
-const MIN_NOTIFICATION_INTERVAL = 2000; // Минимальный интервал между уведомлениями
-
-// Функция для показа уведомлений с очередью
-async function showNextNotification() {
-    if (isShowingNotification || notificationQueue.length === 0) return;
-    
-    const now = Date.now();
-    if (now - lastNotificationTime < MIN_NOTIFICATION_INTERVAL) {
-        setTimeout(showNextNotification, MIN_NOTIFICATION_INTERVAL);
-        return;
-    }
-    
-    isShowingNotification = true;
-    const { message, isError } = notificationQueue.shift();
-    
-    try {
-        if (isError) {
-            console.error('Ошибка:', message);
-        }
-        
-        if (tg && tg.showPopup) {
-            try {
-                await tg.showPopup({
-                    message: message,
-                    buttons: [{ type: 'ok' }]
-                });
-                lastNotificationTime = Date.now();
-            } catch (error) {
-                console.error('Ошибка при показе уведомления:', error);
-                alert(message);
-            }
-        } else {
-            alert(message);
-            lastNotificationTime = Date.now();
-        }
-    } finally {
-        isShowingNotification = false;
-        // Планируем следующее уведомление с задержкой
-        if (notificationQueue.length > 0) {
-            setTimeout(showNextNotification, MIN_NOTIFICATION_INTERVAL);
-        }
-    }
+// Генерация реального device_id (заменяем telegram_id на device_id)
+function getDeviceId() {
+  let deviceId = localStorage.getItem('device_id');
+  if (!deviceId) {
+    deviceId = Math.floor(Math.random() * (999999999 - 100000000 + 1)) + 100000000;
+    localStorage.setItem('device_id', deviceId);
+  }
+  return deviceId;
 }
 
-// Функция для добавления уведомления в очередь
-function addNotification(message, isError = false) {
-    // Проверяем, нет ли уже такого же сообщения в очереди
-    if (!notificationQueue.some(n => n.message === message)) {
-        notificationQueue.push({ message, isError });
-        showNextNotification();
-    }
+const deviceId = getDeviceId(); // Используем device_id вместо telegram_id
+
+// Получение своего профиля
+async function getUserProfile() {
+  const response = await fetch(`${API_URL}/api/users/${deviceId}`);
+  if (!response.ok) throw new Error('Ошибка загрузки профиля');
+  return await response.json();
 }
 
-// Функция для отправки запросов к API
-async function request(url, options = {}) {
-    try {
-        console.log('Отправка запроса к API:', { url, options });
-        
-        const defaultOptions = {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Origin': window.location.origin
-            },
-            credentials: 'include',
-            mode: 'cors'
-        };
-
-        // Объединяем заголовки
-        const mergedOptions = {
-            ...defaultOptions,
-            ...options,
-            headers: {
-                ...defaultOptions.headers,
-                ...(options.headers || {})
-            }
-        };
-
-        // Если есть тело запроса и оно не FormData, преобразуем в JSON
-        if (mergedOptions.body && !(mergedOptions.body instanceof FormData)) {
-            if (typeof mergedOptions.body === 'object') {
-                mergedOptions.body = JSON.stringify(mergedOptions.body);
-            }
-        }
-
-        console.log('Итоговые параметры запроса:', mergedOptions);
-
-        const response = await fetch(url, mergedOptions);
-        console.log('Получен ответ:', response);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Error:', response.status, errorText);
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            console.log('Получены данные:', data);
-            return data;
-        } else {
-            const text = await response.text();
-            console.log('Получен текстовый ответ:', text);
-            return text;
-        }
-    } catch (error) {
-        console.error('API Error:', error);
-        throw error;
-    }
+// Получение следующего профиля
+async function getNextProfile() {
+  const response = await fetch(`${API_URL}/api/users/${deviceId}/next`);
+  if (!response.ok) throw new Error('Ошибка загрузки следующего профиля');
+  return await response.json();
 }
 
-class TelegramWebApp {
-    constructor() {
-        this.API_BASE_URL = API_BASE_URL;
-        this.device_id = localStorage.getItem('device_id');
-        this.isInitialized = false;
-        this.initPromise = this.initialize();
-
-        this.api = {
-            init: async () => {
-                try {
-                    await this.initPromise;
-                    
-                    // Проверяем, есть ли уже device_id
-                    if (this.device_id) {
-                        // Проверяем, существует ли пользователь с таким device_id
-                        try {
-                            const existingUser = await request(`${this.API_BASE_URL}/users/${this.device_id}`);
-                            if (existingUser) {
-                                return existingUser;
-                            }
-                        } catch (error) {
-                            console.log('Пользователь не найден, создаем нового');
-                            // Если пользователь не найден, продолжаем инициализацию
-                        }
-                    }
-                    
-                    // Создаем нового пользователя
-                    const response = await request(`${this.API_BASE_URL}/init`, {
-                        method: 'POST'
-                    });
-                    
-                    if (response && response.device_id) {
-                        this.device_id = response.device_id;
-                        localStorage.setItem('device_id', this.device_id);
-                    }
-                    
-                    return response;
-                } catch (error) {
-                    console.error('Error in init:', error);
-                    throw error;
-                }
-            },
-
-            getProfile: async () => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    const response = await request(`${this.API_BASE_URL}/users/${this.device_id}`);
-                    return response;
-                } catch (error) {
-                    if (error.message.includes('404')) {
-                        return null;
-                    }
-                    throw error;
-                }
-            },
-
-            createProfile: async (profileData) => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users`, {
-                        method: 'POST',
-                        body: JSON.stringify({ ...profileData, device_id: this.device_id })
-                    });
-                } catch (error) {
-                    console.error('Error creating profile:', error);
-                    throw error;
-                }
-            },
-
-            updateProfile: async (profileData) => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users/${this.device_id}`, {
-                        method: 'PUT',
-                        body: JSON.stringify(profileData)
-                    });
-                } catch (error) {
-                    console.error('Error updating profile:', error);
-                    throw error;
-                }
-            },
-
-            uploadPhoto: async (formData) => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/photo`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                } catch (error) {
-                    console.error('Error uploading photo:', error);
-                    throw error;
-                }
-            },
-
-            getNextProfile: async () => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/next`);
-                } catch (error) {
-                    console.error('Error getting next profile:', error);
-                    throw error;
-                }
-            },
-
-            likeProfile: async (targetId) => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/like/${targetId}`, {
-                        method: 'POST'
-                    });
-                } catch (error) {
-                    console.error('Error liking profile:', error);
-                    throw error;
-                }
-            },
-
-            dislikeProfile: async (targetId) => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/dislike/${targetId}`, {
-                        method: 'POST'
-                    });
-                } catch (error) {
-                    console.error('Error disliking profile:', error);
-                    throw error;
-                }
-            },
-
-            getMatches: async () => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/matches`);
-                } catch (error) {
-                    console.error('Error getting matches:', error);
-                    throw error;
-                }
-            },
-
-            getLikes: async () => {
-                try {
-                    await this.initPromise;
-                    if (!this.device_id) {
-                        throw new Error('Device ID not initialized');
-                    }
-                    return await request(`${this.API_BASE_URL}/users/${this.device_id}/likes`);
-                } catch (error) {
-                    console.error('Error getting likes:', error);
-                    throw error;
-                }
-            },
-
-            getDeviceId: () => {
-                return this.device_id;
-            },
-
-            showNotification: (message, isError = false) => {
-                addNotification(message, isError);
-            },
-
-            setImageWithFallback: (imgElement, photoUrl) => {
-                if (!photoUrl) {
-                    imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
-                    return;
-                }
-
-                if (photoUrl.startsWith('http')) {
-                    imgElement.src = photoUrl;
-                } else {
-                    imgElement.src = `${STATIC_BASE_URL}/${photoUrl}`;
-                }
-
-                imgElement.onerror = () => {
-                    imgElement.src = `${STATIC_BASE_URL}/photos/hero-image.jpg`;
-                };
-            }
-        };
-    }
-
-    async initialize() {
-        return new Promise((resolve) => {
-            if (!tg) {
-                console.warn('Telegram WebApp не найден, продолжаем без него');
-                resolve();
-                return;
-            }
-
-            const checkReady = () => {
-                if (tg.initData || tg.initDataUnsafe) {
-                    console.log('Telegram WebApp готов');
-                    tg.ready();
-                    tg.expand();
-                    this.isInitialized = true;
-                    resolve();
-                } else {
-                    console.log('Ожидание инициализации Telegram WebApp...');
-                    setTimeout(checkReady, 100);
-                }
-            };
-
-            checkReady();
-        });
-    }
-
-    isReady() {
-        return this.isInitialized;
-    }
+// Отправка лайка
+async function likeUser(targetId) {
+  const response = await fetch(`${API_URL}/api/users/${deviceId}/like/${targetId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error('Ошибка при лайке');
+  return await response.json();
 }
 
-// Создаем глобальный экземпляр приложения
-window.tgApp = new TelegramWebApp(); 
+// Отправка дизлайка
+async function dislikeUser(targetId) {
+  const response = await fetch(`${API_URL}/api/users/${deviceId}/dislike/${targetId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error('Ошибка при дизлайке');
+  return await response.json();
+}
+
+// Получение списка совпадений
+async function getMatches() {
+  const response = await fetch(`${API_URL}/api/users/${deviceId}/matches`);
+  if (!response.ok) throw new Error('Ошибка загрузки совпадений');
+  return await response.json();
+}
+
+// Экспортируем функции
+export { getUserProfile, getNextProfile, likeUser, dislikeUser, getMatches };

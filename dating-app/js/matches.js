@@ -1,46 +1,31 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    let tgApp = null;
+    const API_URL = 'https://tg-bd.onrender.com'; // Базовый URL API
+    let deviceId = localStorage.getItem('device_id'); // Получаем device_id из localStorage
 
-    // Функция ожидания инициализации tgApp
-    async function waitForTgApp(timeout = 5000) {
-        return new Promise((resolve, reject) => {
-            const startTime = Date.now();
-            
-            const check = () => {
-                if (window.tgApp) {
-                    resolve(window.tgApp);
-                } else if (Date.now() - startTime >= timeout) {
-                    reject(new Error('Таймаут ожидания инициализации Telegram WebApp'));
-                } else {
-                    setTimeout(check, 100);
-                }
-            };
-            check();
-        });
+    if (!deviceId) {
+        deviceId = Math.floor(Math.random() * (999999999 - 100000000 + 1)) + 100000000;
+        localStorage.setItem('device_id', deviceId);
     }
 
     try {
-        // Ждем инициализации tgApp
-        tgApp = await waitForTgApp();
-        console.log('tgApp инициализирован');
+        console.log('Инициализация приложения');
 
-        if (!tgApp.tg || !tgApp.tg.initDataUnsafe || !tgApp.tg.initDataUnsafe.user) {
-            throw new Error('Telegram WebApp не инициализирован корректно');
-        }
-
-        // Получаем telegram_id
-        const telegramId = tgApp.api.getTelegramId();
-        console.log('Получен telegram_id:', telegramId);
-
-        // Получаем мэтчи
-        const matches = await tgApp.api.getMatches(telegramId);
-        console.log('Мэтчи получены:', matches);
-
+        // Получаем контейнер для мэтчей
         const matchesContainer = document.getElementById('matchesContainer');
         if (!matchesContainer) {
             throw new Error('Контейнер для мэтчей не найден');
         }
 
+        // Получаем мэтчи через /api/users/{device_id}/matches
+        const matchesResponse = await fetch(`${API_URL}/api/users/${deviceId}/matches`);
+        if (!matchesResponse.ok) {
+            throw new Error('Ошибка загрузки мэтчей');
+        }
+
+        const matches = await matchesResponse.json();
+        console.log('Мэтчи получены:', matches);
+
+        // Если мэтчей нет, показываем сообщение
         if (!matches || matches.length === 0) {
             matchesContainer.innerHTML = '<p class="no-matches">У вас пока нет мэтчей</p>';
             return;
@@ -50,16 +35,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         matches.forEach(match => {
             const card = document.createElement('div');
             card.className = 'match-card';
-            
+
             card.innerHTML = `
                 <div class="match-photo">
                     <img src="${match.photo_url || 'default-avatar.png'}" alt="Фото пользователя">
                 </div>
                 <div class="match-info">
-                    <h3>${match.name}</h3>
-                    <p>${match.age} лет</p>
-                    <p>${match.car}</p>
-                    <p>${match.region}</p>
+                    <h3>${match.name || 'Без имени'}</h3>
+                    <p>${match.age ? `${match.age} лет` : 'Возраст не указан'}</p>
+                    <p>${match.car || 'Машина не указана'}</p>
+                    <p>${match.region || 'Регион не указан'}</p>
                     <p class="about">${match.about || 'Нет описания'}</p>
                 </div>
             `;
@@ -69,10 +54,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } catch (error) {
         console.error('Ошибка при инициализации:', error);
-        if (tgApp && tgApp.api) {
-            tgApp.api.showNotification(error.message, true);
-        } else {
-            alert(error.message);
-        }
+        alert(error.message); // Показываем ошибку пользователю
     }
-}); 
+});

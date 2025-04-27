@@ -1,300 +1,101 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        console.log('Начало инициализации приложения...');
-        
-        // Wait for tgApp initialization
-        async function waitForTgApp() {
-            return new Promise((resolve, reject) => {
-                let attempts = 0;
-                const maxAttempts = 20;
-                
-                const checkTgApp = () => {
-                    attempts++;
-                    if (window.tgApp) {
-                        console.log('Telegram WebApp найден');
-                        resolve(window.tgApp);
-                    } else if (attempts >= maxAttempts) {
-                        console.warn('Telegram WebApp не найден после ' + maxAttempts + ' попыток');
-                        resolve(null);
-                    } else {
-                        setTimeout(checkTgApp, 500);
-                    }
-                };
-                
-                checkTgApp();
-            });
-        }
+const API_URL = 'https://tg-bd.onrender.com'; // Базовый URL API
 
-        // Get tgApp instance
-        const tgApp = await waitForTgApp();
-        console.log('Статус инициализации tgApp:', tgApp ? 'успешно' : 'не найден');
+// Функция генерации device_id
+function getDeviceId() {
+  let deviceId = localStorage.getItem('device_id');
+  if (!deviceId) {
+    deviceId = Math.floor(Math.random() * (999999999 - 100000000 + 1)) + 100000000;
+    localStorage.setItem('device_id', deviceId);
+  }
+  return deviceId;
+}
 
-        // Создаем список элементов страницы, при взаимодействии с которыми нужно инициализировать пользователя
-        const interactiveElements = [
-            document.getElementById('likeButton'),
-            document.getElementById('dislikeButton'),
-            document.getElementById('profileButton'),
-            document.getElementById('matchesButton'),
-            document.getElementById('profilePhoto')
-        ].filter(Boolean);
+const deviceId = getDeviceId(); // Используем device_id вместо telegram_id
 
-        // Флаг, указывающий, был ли уже инициализирован пользователь
-        let isUserInitialized = false;
+const profileImage = document.getElementById('profile-image');
+const profileName = document.getElementById('profile-name');
+const profileAge = document.getElementById('profile-age');
+const profileCity = document.getElementById('profile-city');
 
-        // Функция для инициализации пользователя
-        async function initializeUser() {
-            if (isUserInitialized) return;
-            isUserInitialized = true;
+const likeButton = document.getElementById('like-button');
+const dislikeButton = document.getElementById('dislike-button');
 
-            try {
-                console.log('Начало инициализации пользователя...');
-                
-                // Инициализируем пользователя
-                const initResponse = await tgApp.api.init();
-                console.log('Ответ инициализации:', initResponse);
+let currentProfile = null;
 
-                if (!initResponse || !initResponse.device_id) {
-                    throw new Error('Не удалось получить device_id');
-                }
-
-                // Получаем профиль
-                const profile = await tgApp.api.getProfile();
-                console.log('Профиль пользователя:', profile);
-
-                if (!profile) {
-                    console.log('Профиль не найден, перенаправление на создание...');
-                    const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-                    window.location.href = baseUrl + 'profile-change.html';
-                    return;
-                }
-
-                // Load next profile
-                const nextProfileResponse = await tgApp.api.getNextProfile();
-                console.log('Следующий профиль:', nextProfileResponse);
-                
-                if (nextProfileResponse && nextProfileResponse.profile) {
-                    displayProfile(nextProfileResponse.profile);
-                } else {
-                    displayNoMoreProfiles();
-                }
-
-                // Удаляем обработчики событий для инициализации, так как она уже выполнена
-                interactiveElements.forEach(element => {
-                    element.removeEventListener('click', initializeUser);
-                });
-                
-            } catch (error) {
-                console.error('Ошибка при инициализации:', error);
-                if (error.message.includes('404')) {
-                    console.log('Профиль не найден, перенаправление на создание...');
-                    const baseUrl = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
-                    window.location.href = baseUrl + 'profile-change.html';
-                } else {
-                    showError('Ошибка инициализации: ' + error.message);
-                }
-                return;
-            }
-        }
-
-        // Добавляем обработчики событий для всех интерактивных элементов
-        interactiveElements.forEach(element => {
-            element.addEventListener('click', initializeUser);
-        });
-
-        // Add event listeners for like/dislike buttons
-        document.getElementById('likeButton')?.addEventListener('click', async () => {
-            // Убедимся, что пользователь инициализирован
-            await initializeUser();
-            
-            try {
-                const likeButton = document.getElementById('likeButton');
-                if (!likeButton || !likeButton.dataset.profileId) {
-                    console.error('ID профиля не найден');
-                    return;
-                }
-
-                const currentProfileId = likeButton.dataset.profileId;
-                console.log('Отправка лайка для профиля:', currentProfileId);
-                
-                const result = await tgApp.api.likeProfile(currentProfileId);
-                console.log('Результат лайка:', result);
-                
-                if (result && result.match) {
-                    showMatchNotification();
-                }
-                
-                const nextProfileResponse = await tgApp.api.getNextProfile();
-                console.log('Следующий профиль после лайка:', nextProfileResponse);
-                
-                if (nextProfileResponse && nextProfileResponse.profile) {
-                    displayProfile(nextProfileResponse.profile);
-                } else {
-                    displayNoMoreProfiles();
-                }
-            } catch (error) {
-                console.error('Ошибка при обработке лайка:', error);
-                showError('Не удалось обработать лайк: ' + error.message);
-            }
-        });
-
-        document.getElementById('dislikeButton')?.addEventListener('click', async () => {
-            // Убедимся, что пользователь инициализирован
-            await initializeUser();
-            
-            try {
-                const dislikeButton = document.getElementById('dislikeButton');
-                if (!dislikeButton || !dislikeButton.dataset.profileId) {
-                    console.error('ID профиля не найден');
-                    return;
-                }
-
-                const currentProfileId = dislikeButton.dataset.profileId;
-                console.log('Отправка дизлайка для профиля:', currentProfileId);
-                
-                await tgApp.api.dislikeProfile(currentProfileId);
-                
-                const nextProfileResponse = await tgApp.api.getNextProfile();
-                console.log('Следующий профиль после дизлайка:', nextProfileResponse);
-                
-                if (nextProfileResponse && nextProfileResponse.profile) {
-                    displayProfile(nextProfileResponse.profile);
-                } else {
-                    displayNoMoreProfiles();
-                }
-            } catch (error) {
-                console.error('Ошибка при обработке дизлайка:', error);
-                showError('Не удалось обработать дизлайк: ' + error.message);
-            }
-        });
-
-    } catch (error) {
-        console.error('Критическая ошибка:', error);
-        showError('Критическая ошибка приложения: ' + error.message);
+// Загрузить следующий профиль
+async function loadNextProfile() {
+  try {
+    const response = await fetch(`${API_URL}/api/users/${deviceId}/next`);
+    if (!response.ok) {
+      throw new Error('Ошибка загрузки профиля');
     }
+
+    const profile = await response.json();
+    currentProfile = profile;
+
+    if (profile) {
+      profileImage.src = profile.photo_url || './image/hero-image.png';
+      profileName.textContent = profile.name || 'Без имени';
+      profileAge.textContent = profile.age ? `${profile.age} лет` : 'Возраст не указан';
+      profileCity.textContent = profile.city || 'Город не указан';
+    } else {
+      profileImage.src = '';
+      profileName.textContent = 'Профили закончились';
+      profileAge.textContent = '';
+      profileCity.textContent = '';
+    }
+  } catch (error) {
+    console.error('Ошибка при загрузке профиля:', error);
+  }
+}
+
+// Обработчик лайка
+likeButton.addEventListener('click', async () => {
+  if (!currentProfile) return;
+  try {
+    const targetId = currentProfile.id; // Предполагается, что в профиле есть поле id
+    const likeResponse = await fetch(`${API_URL}/api/users/${deviceId}/like/${targetId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!likeResponse.ok) {
+      throw new Error('Ошибка отправки лайка');
+    }
+
+    const result = await likeResponse.json();
+    if (result.match) {
+      alert('У вас новый мэтч!'); // Можно заменить на уведомление
+    } else {
+      alert('Лайк отправлен!');
+    }
+
+    await loadNextProfile();
+  } catch (error) {
+    console.error('Ошибка при лайке:', error);
+  }
 });
 
-function displayProfile(profile) {
-    if (!profile || typeof profile !== 'object') {
-        console.error('Некорректный формат профиля:', profile);
-        displayNoMoreProfiles();
-        return;
+// Обработчик дизлайка
+dislikeButton.addEventListener('click', async () => {
+  if (!currentProfile) return;
+  try {
+    const targetId = currentProfile.id; // Предполагается, что в профиле есть поле id
+    const dislikeResponse = await fetch(`${API_URL}/api/users/${deviceId}/dislike/${targetId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!dislikeResponse.ok) {
+      throw new Error('Ошибка отправки дизлайка');
     }
 
-    console.log('Отображение профиля:', profile);
+    alert('Дизлайк отправлен');
+    await loadNextProfile();
+  } catch (error) {
+    console.error('Ошибка при дизлайке:', error);
+  }
+});
 
-    try {
-        // Обновляем фото профиля
-        const profilePhoto = document.getElementById('profilePhoto');
-        if (profilePhoto) {
-            if (profile.photo_url) {
-                profilePhoto.src = profile.photo_url.startsWith('http') 
-                    ? profile.photo_url 
-                    : `${STATIC_BASE_URL}${profile.photo_url}`;
-                profilePhoto.alt = `Фото ${profile.name}`;
-            } else {
-                profilePhoto.src = './image/placeholder_image.jpg';
-                profilePhoto.alt = 'Фото профиля отсутствует';
-            }
-        }
-
-        // Обновляем имя
-        const nameElement = document.getElementById('profileName');
-        if (nameElement) {
-            nameElement.textContent = profile.name || 'Без имени';
-        }
-
-        // Обновляем описание
-        const aboutElement = document.getElementById('profileAbout');
-        if (aboutElement) {
-            aboutElement.textContent = profile.about || 'Нет описания';
-            aboutElement.style.display = profile.about ? 'block' : 'none';
-        }
-
-        // Обновляем информацию об автомобиле
-        const carElement = document.getElementById('profileCar');
-        if (carElement) {
-            carElement.textContent = profile.car || 'Автомобиль не указан';
-            carElement.style.display = profile.car ? 'block' : 'none';
-        }
-
-        // Сохраняем ID профиля для кнопок лайка/дизлайка
-        const likeButton = document.getElementById('likeButton');
-        const dislikeButton = document.getElementById('dislikeButton');
-        
-        if (likeButton) {
-            likeButton.dataset.profileId = profile.id;
-            likeButton.disabled = false;
-        }
-        
-        if (dislikeButton) {
-            dislikeButton.dataset.profileId = profile.id;
-            dislikeButton.disabled = false;
-        }
-    } catch (error) {
-        console.error('Ошибка при отображении профиля:', error);
-        showError('Не удалось отобразить профиль');
-    }
-}
-
-function displayNoMoreProfiles() {
-    console.log('Отображение сообщения об отсутствии профилей');
-    
-    const profilePhoto = document.getElementById('profilePhoto');
-    if (profilePhoto) {
-        profilePhoto.src = './image/no_more_profiles.jpg';
-        profilePhoto.alt = 'Нет доступных профилей';
-    }
-
-    const nameElement = document.getElementById('profileName');
-    if (nameElement) {
-        nameElement.textContent = 'Профили закончились';
-    }
-
-    const aboutElement = document.getElementById('profileAbout');
-    if (aboutElement) {
-        aboutElement.textContent = 'Загляните позже, чтобы увидеть новые анкеты!';
-    }
-
-    const carElement = document.getElementById('profileCar');
-    if (carElement) {
-        carElement.style.display = 'none';
-    }
-
-    // Отключаем кнопки
-    const likeButton = document.getElementById('likeButton');
-    const dislikeButton = document.getElementById('dislikeButton');
-    
-    if (likeButton) {
-        likeButton.disabled = true;
-    }
-    
-    if (dislikeButton) {
-        dislikeButton.disabled = true;
-    }
-}
-
-function showMatchNotification() {
-    const notification = document.createElement('div');
-    notification.className = 'match-notification';
-    notification.innerHTML = `
-        <div class="match-content">
-            <h3>It's a match! 🎉</h3>
-            <p>You can now chat with this person</p>
-            <button onclick="this.parentElement.parentElement.remove()">OK</button>
-        </div>
-    `;
-    document.body.appendChild(notification);
-}
-
-function showError(message) {
-    const notification = document.createElement('div');
-    notification.className = 'error-notification';
-    notification.innerHTML = `
-        <div class="error-content">
-            <h3>Error</h3>
-            <p>${message}</p>
-            <button onclick="this.parentElement.parentElement.remove()">OK</button>
-        </div>
-    `;
-    document.body.appendChild(notification);
-} 
+// Первая загрузка страницы
+loadNextProfile();

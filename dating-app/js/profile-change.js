@@ -1,11 +1,17 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    let tgApp = null;
+    const API_URL = 'https://tg-bd.onrender.com'; // Базовый URL API
+    let deviceId = localStorage.getItem('device_id'); // Получаем device_id из localStorage
+
+    if (!deviceId) {
+        deviceId = Math.floor(Math.random() * (999999999 - 100000000 + 1)) + 100000000;
+        localStorage.setItem('device_id', deviceId);
+    }
 
     // Функция ожидания инициализации tgApp
     async function waitForTgApp(timeout = 5000) {
         return new Promise((resolve, reject) => {
             const startTime = Date.now();
-            
+
             const check = () => {
                 if (window.tgApp) {
                     resolve(window.tgApp);
@@ -21,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         // Ждем инициализации tgApp
-        tgApp = await waitForTgApp();
+        await waitForTgApp();
         console.log('tgApp инициализирован');
 
         // Получаем ссылки на элементы формы
@@ -43,11 +49,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Создаем список элементов страницы, при взаимодействии с которыми нужно инициализировать пользователя
         const interactiveElements = [
-            nameInput, 
-            ageInput, 
-            carInput, 
-            regionInput, 
-            aboutInput, 
+            nameInput,
+            ageInput,
+            carInput,
+            regionInput,
+            aboutInput,
             photoInput,
             saveButton,
             backButton,
@@ -63,14 +69,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             isUserInitialized = true;
 
             try {
-                // Инициализируем пользователя
-                const user = await tgApp.api.init();
-                console.log('Пользователь инициализирован:', user);
+                // Инициализируем пользователя через /api/init
+                const initResponse = await fetch(`${API_URL}/api/init`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: deviceId }),
+                });
+
+                if (!initResponse.ok) {
+                    throw new Error('Ошибка инициализации пользователя');
+                }
+
+                console.log('Пользователь инициализирован');
 
                 try {
-                    // Получаем текущий профиль
-                    const profile = await tgApp.api.getProfile();
-                    console.log('Текущий профиль:', profile);
+                    // Получаем текущий профиль через /api/users/{device_id}
+                    const profileResponse = await fetch(`${API_URL}/api/users/${deviceId}`);
+                    if (!profileResponse.ok && profileResponse.status !== 404) {
+                        throw new Error('Ошибка загрузки профиля');
+                    }
+
+                    const profile = await profileResponse.json();
 
                     // Если профиль не найден, создаем новый
                     if (!profile) {
@@ -80,9 +99,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             age: null,
                             car: '',
                             region: '',
-                            about: ''
+                            about: '',
                         };
-                        await tgApp.api.createProfile(defaultProfile);
+
+                        await fetch(`${API_URL}/api/users/${deviceId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(defaultProfile),
+                        });
                     }
 
                     // Заполняем форму данными профиля
@@ -94,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         aboutInput.value = profile.about || '';
 
                         if (profilePhoto) {
-                            tgApp.api.setImageWithFallback(profilePhoto, profile.photo_url);
+                            profilePhoto.src = profile.photo_url || './image/hero-image.png';
                         }
                     }
 
@@ -125,16 +149,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Обработчик загрузки фото
         photoInput.addEventListener('change', async (e) => {
             await initializeUser(); // Убедимся, что пользователь инициализирован
-            
+
             const file = e.target.files[0];
             if (file) {
                 try {
                     const formData = new FormData();
                     formData.append('file', file);
-                    const result = await tgApp.api.uploadPhoto(formData);
-                    
+
+                    const uploadResponse = await fetch(`${API_URL}/api/users/${deviceId}/photo`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!uploadResponse.ok) {
+                        throw new Error('Ошибка загрузки фото');
+                    }
+
+                    const result = await uploadResponse.json();
                     if (result && result.photo_url) {
-                        tgApp.api.setImageWithFallback(profilePhoto, result.photo_url);
+                        profilePhoto.src = result.photo_url;
                         showSuccess('Фото успешно загружено');
                     }
                 } catch (error) {
@@ -147,21 +180,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Обработчик отправки формы
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             await initializeUser(); // Убедимся, что пользователь инициализирован
-            
+
             try {
                 const formData = {
                     name: nameInput.value.trim(),
                     age: parseInt(ageInput.value) || null,
                     car: carInput.value.trim(),
                     region: regionInput.value.trim(),
-                    about: aboutInput.value.trim()
+                    about: aboutInput.value.trim(),
                 };
 
-                await tgApp.api.updateProfile(formData);
+                const updateResponse = await fetch(`${API_URL}/api/users/${deviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData),
+                });
+
+                if (!updateResponse.ok) {
+                    throw new Error('Ошибка обновления профиля');
+                }
+
                 showSuccess('Профиль успешно обновлен');
-                
+
                 // Возвращаемся на страницу профиля
                 setTimeout(() => {
                     window.location.href = './profile.html';
@@ -205,4 +247,4 @@ function showError(message) {
         `;
         document.body.appendChild(errorDiv);
     }
-} 
+}
