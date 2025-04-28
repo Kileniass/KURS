@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const likeBtn = document.getElementById('likeBtn');
     const dislikeBtn = document.getElementById('dislikeBtn');
     let currentProfile = null;
-    let currentUserId = null;
 
     // Устанавливаем текст кнопок сразу
     likeBtn.innerHTML = 'Лайк';
@@ -24,15 +23,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         imgElement.src = src || fallbackSrc;
     }
 
-    // Инициализация пользователя
+    // Инициализация пользователя (если нужно)
     async function initUser() {
         try {
-            // Получаем telegram_id из Telegram WebApp
-            const telegramId = tgApp.api.getTelegramId();
+            // Жёстко задаём telegram_id
+            const telegramId = 1155098159;
 
             // Инициализируем пользователя на сервере
             const user = await tgApp.api.initUser(telegramId);
-            currentUserId = telegramId;
             console.log('User initialized:', user);
 
             // Загружаем первый профиль
@@ -46,10 +44,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Загрузка следующего профиля
     async function loadNextProfile() {
         try {
-            console.log('Запрос следующего профиля для пользователя:', currentUserId);
+            console.log('Запрос следующего профиля для пользователя с telegram_id = 1155098159');
 
-            // Выполняем запрос к серверу
-            const response = await fetch(`/api/profiles/next?currentUserId=${currentUserId}`);
+            // Выполняем запрос к серверу с жёстко заданным telegram_id
+            const response = await fetch(`/api/profiles/next?currentUserId=1155098159`);
             if (!response.ok) {
                 throw new Error(`Ошибка HTTP: ${response.status}`);
             }
@@ -100,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetUserId: currentProfile.telegram_id,
-                    currentUserId: currentUserId
+                    currentUserId: 1155098159 // Жёстко задаём telegram_id
                 })
             });
 
@@ -132,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetUserId: currentProfile.telegram_id,
-                    currentUserId: currentUserId
+                    currentUserId: 1155098159 // Жёстко задаём telegram_id
                 })
             });
 
