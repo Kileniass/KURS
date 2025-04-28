@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dislikeBtn.innerHTML = 'Дизлайк';
 
     // Базовые пути для изображений
-    const IMAGES_BASE_PATH = 'https://raw.githubusercontent.com/Kileniass/KURS/main/dating-app/image'; // Используем raw.githubusercontent.com
+    const IMAGES_BASE_PATH = '/image';
     const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
 
     // Функция для безопасной загрузки изображений
@@ -20,14 +20,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             imgElement.src = fallbackSrc;
             imgElement.onerror = null; // Убираем обработчик чтобы избежать рекурсии
         };
-
-        // Если src пустой, используем запасное изображение
         imgElement.src = src || fallbackSrc;
     }
 
     // Инициализация пользователя (если нужно)
     async function initUser() {
         try {
+            // Жёстко задаём telegram_id
+            const telegramId = 1;
 
             // Инициализируем пользователя на сервере
             const user = await tgApp.api.initUser(telegramId);
