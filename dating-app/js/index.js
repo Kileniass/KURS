@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function initUser() {
         try {
             // Жёстко задаём telegram_id
-            const telegramId = 1155098159;
+            const telegramId = 1;
 
             // Инициализируем пользователя на сервере
             const user = await tgApp.api.initUser(telegramId);
@@ -44,10 +44,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Загрузка следующего профиля
     async function loadNextProfile() {
         try {
-            console.log('Запрос следующего профиля для пользователя с telegram_id = 1155098159');
+            console.log('Запрос следующего профиля для пользователя с currentUserId = 1');
 
-            // Выполняем запрос к серверу с жёстко заданным telegram_id
-            const response = await fetch(`/api/profiles/next?currentUserId=1155098159`);
+            // Выполняем запрос к серверу с жёстко заданным currentUserId
+            const response = await fetch(`/api/profiles/next?currentUserId=1`);
             if (!response.ok) {
                 throw new Error(`Ошибка HTTP: ${response.status}`);
             }
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetUserId: currentProfile.telegram_id,
-                    currentUserId: 1155098159 // Жёстко задаём telegram_id
+                    currentUserId: 1 // Жёстко задаём currentUserId
                 })
             });
 
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetUserId: currentProfile.telegram_id,
-                    currentUserId: 1155098159 // Жёстко задаём telegram_id
+                    currentUserId: 1 // Жёстко задаём currentUserId
                 })
             });
 
