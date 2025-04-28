@@ -44,10 +44,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Загрузка следующего профиля
     async function loadNextProfile() {
         try {
-            console.log('Запрос следующего профиля для пользователя с currentUserId = 1');
+            console.log('Запрос следующего профиля для пользователя с currentUserId = 2');
 
             // Выполняем запрос к серверу с жёстко заданным currentUserId
-            const response = await fetch(`/api/profiles/next?currentUserId=1`);
+            const response = await fetch('https://tg-bd.onrender.com/api/profiles/next?current_user_id=2');
             if (!response.ok) {
                 throw new Error(`Ошибка HTTP: ${response.status}`);
             }
@@ -93,12 +93,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentProfile) return;
 
         try {
-            const response = await fetch('/api/profiles/like', {
+            const response = await fetch('https://tg-bd.onrender.com/api/profiles/like', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetUserId: currentProfile.telegram_id,
-                    currentUserId: 1 // Жёстко задаём currentUserId
+                    currentUserId: 2 // Жёстко задаём currentUserId
                 })
             });
 
@@ -125,12 +125,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentProfile) return;
 
         try {
-            const response = await fetch('/api/profiles/dislike', {
+            const response = await fetch('https://tg-bd.onrender.com/api/profiles/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetUserId: currentProfile.telegram_id,
-                    currentUserId: 1 // Жёстко задаём currentUserId
+                    currentUserId: 2 // Жёстко задаём currentUserId
                 })
             });
 
