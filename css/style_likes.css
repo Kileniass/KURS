@@ -1,0 +1,140 @@
+/* Импорт общих стилей */
+@import 'style.css';
+
+/* Стили для секции лайков */
+.hero {
+    width: 320px;
+    height: 620px;
+    background-color: #333;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero__container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    text-align: center;
+}
+
+.hero__icon {
+    margin-bottom: 20px;
+}
+
+.img__heart {
+    width: 50px;
+    height: 50px;
+}
+
+.hero__message {
+    margin-bottom: 30px;
+}
+
+.hero__text {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+}
+
+.hero__button {
+    margin-top: 20px;
+}
+
+.btn__view-profiles {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #FFFFFF;
+    color: #000000;
+    border-radius: 15px;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.btn__view-profiles:hover {
+    background-color: #E0E0E0;
+}
+
+.btn__text {
+    display: block;
+    padding: 5px 0;
+}
+
+/* Стили для списка лайков */
+.likes__list {
+    display: none; /* Скрываем список, пока нет лайков */
+}
+
+/* Показываем список, когда есть лайки */
+.likes__list:not(:empty) {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 10px;
+}
+
+.like-card {
+    background: #333;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.like-card__image {
+    width: 310px;
+    height: 450px;
+    object-fit: cover;
+}
+
+.like-card__content {
+    padding: 15px;
+}
+
+.like-card__name {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.like-card__car {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #FFFFFF;
+}
+
+.like-card__about {
+    font-size: 14px;
+    line-height: 1.4;
+    color: #FFFFFF;
+}
+
+.likes__empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    color: var(--tg-theme-hint-color);
+    font-size: 16px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .likes__list {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .like-card__image {
+        height: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .likes__list {
+        grid-template-columns: 1fr;
+    }
+
+    .likes__title {
+        font-size: 20px;
+    }
+}
