@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const likeBtn = document.getElementById('likeBtn');
     const dislikeBtn = document.getElementById('dislikeBtn');
     let currentProfile = null;
+    let currentUserId = null;
 
     // Устанавливаем текст кнопок сразу
     likeBtn.innerHTML = 'Лайк';
@@ -23,14 +24,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         imgElement.src = src || fallbackSrc;
     }
 
-    // Инициализация пользователя (если нужно)
+    // Инициализация пользователя
     async function initUser() {
         try {
-            // Жёстко задаём telegram_id
-            const telegramId = 1;
+            // Получаем telegram_id из Telegram WebApp
+            const telegramId = tgApp.api.getTelegramId();
 
             // Инициализируем пользователя на сервере
             const user = await tgApp.api.initUser(telegramId);
+            currentUserId = telegramId;
             console.log('User initialized:', user);
 
             // Загружаем первый профиль
@@ -44,10 +46,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Загрузка следующего профиля
     async function loadNextProfile() {
         try {
-            console.log('Запрос следующего профиля для пользователя с currentUserId = 2');
+            console.log('Запрос следующего профиля для пользователя:', currentUserId);
 
-            // Выполняем запрос к серверу с жёстко заданным currentUserId
-            const response = await fetch('https://tg-bd.onrender.com/api/profiles/next?current_user_id=2');
+            // Выполняем запрос к серверу
+            const response = await fetch(`/api/profiles/next?currentUserId=${currentUserId}`);
             if (!response.ok) {
                 throw new Error(`Ошибка HTTP: ${response.status}`);
             }
@@ -93,12 +95,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentProfile) return;
 
         try {
-            const response = await fetch('https://tg-bd.onrender.com/api/profiles/like', {
+            const response = await fetch('/api/profiles/like', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetUserId: currentProfile.telegram_id,
-                    currentUserId: 2 // Жёстко задаём currentUserId
+                    currentUserId: currentUserId
                 })
             });
 
@@ -125,12 +127,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentProfile) return;
 
         try {
-            const response = await fetch('https://tg-bd.onrender.com/api/profiles/dislike', {
+            const response = await fetch('/api/profiles/dislike', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetUserId: currentProfile.telegram_id,
-                    currentUserId: 2 // Жёстко задаём currentUserId
+                    currentUserId: currentUserId
                 })
             });
 
