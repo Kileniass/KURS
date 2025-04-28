@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dislikeBtn.innerHTML = 'Дизлайк';
 
     // Базовые пути для изображений
-    const IMAGES_BASE_PATH = 'https://github.com/Kileniass/KURS/blob/main/dating-app/image'; // Используем raw.githubusercontent.com
+    const IMAGES_BASE_PATH = 'https://raw.githubusercontent.com/Kileniass/KURS/main/dating-app/image'; // Используем raw.githubusercontent.com
     const DEFAULT_PROFILE_IMAGE = `${IMAGES_BASE_PATH}/hero-image.jpg`;
 
     // Функция для безопасной загрузки изображений
